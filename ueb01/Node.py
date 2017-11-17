@@ -105,7 +105,7 @@ class Node:
         print "Node: " + str(self.id) + " listens on Socket: " + str(self.port)
         while True:
             msg, addr = self.listen_socket.recvfrom(1024)  # Buffer-Size set to 1024 bytes
-            print str(addr)
+            self.print_msg(msg)
             thread.start_new_thread(self.msg_handling(msg), ())
 
     def __del__(self):
@@ -118,7 +118,7 @@ class Node:
     # Message print
     @staticmethod
     def print_msg(msg):
-        json_msg = json.load(msg)
+        json_msg = json.loads(msg)
         print "____ Message ____"
         print "from: " + str(json_msg["sID"])
         print "received time: " + str(json_msg["time"])
@@ -131,9 +131,7 @@ class Node:
 
     # Handling of received Messages
     def msg_handling(self, msg):
-        self.print_msg(msg)
-
-        json_msg = json.load(msg)
+        json_msg = json.loads(msg)
 
         command = str(json_msg["cmd"])
 
@@ -175,6 +173,7 @@ def main(argv):
     except Exception as e:
         logging.basicConfig(filename='node.log', level=logging.DEBUG)
         logging.critical(str(type(e)) + " : " + str(e.args))
+        sys.exit(6)
 
 
 if __name__ == "__main__":

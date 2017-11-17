@@ -60,15 +60,15 @@ class NetworkObserver:
 
     def run(self):
         while True:
-            inputStr = raw_input("Command: ")
+            input_str = raw_input("Command: ")
 
-            if inputStr == "exit":
+            if input_str == "exit":
                     sys.exit(0)
-            elif inputStr == "ls":
+            elif input_str == "ls":
                 print self.onlineNodes
-            elif inputStr =="listen":
+            elif input_str =="listen":
                 thread.start_new_thread(self.listen(), ())
-            elif inputStr == "fa":
+            elif input_str == "fa":
                 for i in range(len(self.onlineNodes)):
                     self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "end", "")
 
