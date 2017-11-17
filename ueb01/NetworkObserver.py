@@ -5,7 +5,6 @@ import string
 import json
 import thread
 import time
-import SendMsg
 
 
 class NetworkObserver:
@@ -20,6 +19,8 @@ class NetworkObserver:
 
     onlineNodes = []            # List of all online Nodes
 
+    currentNetworkGraph = ""    # Graph of current Network if requested
+
     def __init__(self):
         self.get_online_nodes()
 
@@ -31,7 +32,6 @@ class NetworkObserver:
         current_entry = config_file.readline()
 
         while current_entry != "":
-            current_entry = config_file.readline()
 
             blank_pos = string.find(current_entry, " ")
             colon_pos = string.find(current_entry, ":")
@@ -42,6 +42,7 @@ class NetworkObserver:
 
             if ce_id != "":
                 self.onlineNodes.append((ce_id, ce_ip, ce_port))
+            current_entry = config_file.readline()
 
     @staticmethod
     def print_commands():
@@ -59,14 +60,29 @@ class NetworkObserver:
             msg, addr = self.listen_socket.recvfrom(1024)  # Buffer-Size set to 1024 bytes
             thread.start_new_thread(self.handle_msg(msg), ())
 
+    def handle_msg(self, msg):
+        json_msg = json.loads(msg)
+
+        command = str(json_msg["cmd"])
+        if command == "genGraphAck":
+            self.generate_graph_file(json_msg["sID"], json_msg["payload"])
+
+    def generate_graph_file(self, caller, callee_list):
+        if self.currentNetworkGraph == "":
+            self.currentNetworkGraph = "graph G {\n"
+        else:
+            self.currentNetworkGraph = self.currentNetworkGraph[:-1]
+
+        callees = str(callee_list).split(";")
+        for i in range(len(callees)):
+            self.currentNetworkGraph += caller + " -- " + callees[i] + "\n"
+        self.currentNetworkGraph += "}"
+
     def send_msg(self, receiver_ip, receiver_port, cmd, payload):
         json_msg = json.dumps({'sID': str(self.id), 'time': str(time.strftime("%d-%m-%Y %H:%M:%S",
                                                                               time.gmtime())), 'cmd': str(cmd),
                                'payload': str(payload)})
         self.send_socket.sendto(json_msg, (receiver_ip, int(receiver_port)))
-
-    def handle_msg(self, msg):
-        print str(msg)
 
     def get_node_by_id(self, node_id):
         for i in range(len(self.onlineNodes)):
@@ -80,12 +96,19 @@ class NetworkObserver:
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
             online_node_id_list += current_node[0] + ";"
-        online_node_id_list = online_node_id_list[:1]   #remove obsolete ;
+        online_node_id_list = online_node_id_list[:-1]   # remove obsolete ;
 
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
             self.send_msg(current_node[1], current_node[2], "randNG", online_node_id_list)
             time.sleep(0.5)
+
+    def request_network_graph(self):
+        for i in range(len(self.onlineNodes)):
+            current_node = self.onlineNodes[i]
+            self.send_msg(current_node[1], current_node[2], "genGraph", "")
+            self.listen()
+        print self.currentNetworkGraph
 
     def run(self):
         while True:
@@ -108,6 +131,8 @@ class NetworkObserver:
                     self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "end", "")
             elif input_str == "4":
                 self.initiate_rand_network()
+            elif input_str == "5":
+                self.request_network_graph()
             else:
                 print "\nNo such command\n\n"
 

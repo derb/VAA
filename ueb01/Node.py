@@ -38,13 +38,14 @@ class Node:
     def get_params(searched_id):
         config_file = open('config', 'r')
         not_found = True
+        print searched_id
 
         while not_found:
             current_entry = config_file.readline()
 
             if current_entry == "":
-                print "Error: Cannot find Port for this ID"
-                sys.exit(2)
+                print "Error: Cannot find Port for the ID " + searched_id
+                return "-1"
             else:
                 blank_pos = string.find(current_entry, " ")
                 colon_pos = string.find(current_entry, ":")
@@ -80,7 +81,10 @@ class Node:
                 new_neighbours.append(new_id)
 
         for i in range(offset, len(new_neighbours) - 1):
-            self.neighborNodes.append(self.get_params(new_neighbours[i]))
+            current_new_neighbour = self.get_params(new_neighbours[i])
+            if current_new_neighbour != "-1":
+                self.neighborNodes.append(current_new_neighbour)
+                self.send_msg(current_new_neighbour['ip'], current_new_neighbour['port'], "newNeighbour", self.id)
 
     def generate_network_by_graph(self, graph_file):
         graph = open(graph_file, 'r')
@@ -99,6 +103,7 @@ class Node:
 
     def set_online_nodes(self, node_id_list_str):
         self.onlineNodes = str(node_id_list_str).split(";")
+        print self.onlineNodes
 
     def stop(self):
         self.listen_socket.close()
@@ -128,6 +133,11 @@ class Node:
                                'payload': str(payload)})
         self.send_socket.sendto(json_msg, (receiver_ip, int(receiver_port)))
 
+    def send_to_neighbours(self, cmd, payload):
+        for i in len(self.neighborNodes):
+            current_neighbour = self.neighborNodes[i]
+            self.send_msg(current_neighbour[1], current_neighbour[2], cmd, payload)
+
     # Handling of received Messages
     def msg_handling(self, msg):
         json_msg = json.loads(msg)
@@ -156,6 +166,8 @@ class Node:
             msg = msg[:-1]
             self.send_msg(self.observerIP, self.observerPort, "genGraphAck", msg)
             return
+        elif command == "newNeighbour":
+            self.neighborNodes.append(self.get_params(json_msg["payload"]))
         # Other-Msg
         elif command == "msg":
             return
