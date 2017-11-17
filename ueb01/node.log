@@ -9,3 +9,5 @@ CRITICAL:root:<type 'exceptions.ValueError'> : ("invalid literal for int() with 
 CRITICAL:root:<type 'exceptions.ValueError'> : ("invalid literal for int() with base 10: '127.0.0.1'",)
 CRITICAL:root:<type 'exceptions.ValueError'> : ("invalid literal for int() with base 10: '127.0.0.1'",)
 CRITICAL:root:<type 'exceptions.ValueError'> : ("invalid literal for int() with base 10: '127.0.0.1'",)
+CRITICAL:root:<type 'exceptions.AttributeError'> : ("'str' object has no attribute 'read'",)
+CRITICAL:root:<type 'exceptions.AttributeError'> : ("'str' object has no attribute 'read'",)

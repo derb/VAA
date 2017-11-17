@@ -41,7 +41,7 @@ class Node:
 
                 ce_id = current_entry[0:blank_pos]
                 ce_ip = current_entry[blank_pos + 1:colon_pos]
-                ce_port = current_entry[colon_pos + 1:len(current_entry)]
+                ce_port = current_entry[colon_pos + 1:len(current_entry) - 1]
 
                 if searched_id == ce_id:
                     ip = ce_ip
