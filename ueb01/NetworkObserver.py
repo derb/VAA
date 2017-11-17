@@ -5,6 +5,7 @@ import string
 import json
 import thread
 import time
+import SendMsg
 
 
 class NetworkObserver:
@@ -67,6 +68,25 @@ class NetworkObserver:
     def handle_msg(self, msg):
         print str(msg)
 
+    def get_node_by_id(self, node_id):
+        for i in range(len(self.onlineNodes)):
+            if self.onlineNodes[i][0] == node_id:
+                return self.onlineNodes[i]
+            else:
+                return "-1"
+
+    def initiate_rand_network(self):
+        online_node_id_list = ""
+        for i in range(len(self.onlineNodes)):
+            current_node = self.onlineNodes[i]
+            online_node_id_list += current_node[0] + ";"
+        online_node_id_list = online_node_id_list[:1]   #remove obsolete ;
+
+        for i in range(len(self.onlineNodes)):
+            current_node = self.onlineNodes[i]
+            self.send_msg(current_node[1], current_node[2], "randNG", online_node_id_list)
+            time.sleep(0.5)
+
     def run(self):
         while True:
             print self.print_commands()
@@ -74,13 +94,22 @@ class NetworkObserver:
 
             if input_str == "0":
                     sys.exit(0)
-            elif input_str == "ls":
+            elif input_str == "1":
                 print self.onlineNodes
-            elif input_str == "listen":
-                thread.start_new_thread(self.listen(), ())
-            elif input_str == "fa":
+            elif input_str == "2":
+                node_id = raw_input("Node ID: ")
+                node_to_stop = self.get_node_by_id(node_id)
+                if node_to_stop == "-1":
+                    print "Could not find Node by this ID"
+                else:
+                    self.send_msg(node_to_stop[1], node_to_stop[2], "end", "")
+            elif input_str == "3":
                 for i in range(len(self.onlineNodes)):
                     self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "end", "")
+            elif input_str == "4":
+                self.initiate_rand_network()
+            else:
+                print "\nNo such command\n\n"
 
 
 def main(argv):

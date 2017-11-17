@@ -5,12 +5,14 @@ import socket
 import logging
 import json
 import thread
-from SendMsg import SendMsg
+import time
 
 
 class Node:
     # Socket for Message-Receiving
     listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # Socket for Message-Sending
+    send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     observerID = 0            # Fix ID for the Network-Observer
     observerIP = "127.0.0.1"  # Fix IP for the Network-Observer
@@ -95,12 +97,6 @@ class Node:
         for i in graph_neighbours:
             self.neighborNodes.append(self.get_params(graph_neighbours[i]))
 
-    def generate_network(self, graph_file):
-        if graph_file == "":
-            self.generate_random_network()
-        else:
-            self.generate_network(graph_file)
-
     def set_online_nodes(self, node_id_list_str):
         self.onlineNodes = str(node_id_list_str).split(";")
 
@@ -126,9 +122,11 @@ class Node:
         print "command: " + str(json_msg["cmd"])
         print "payload: " + str(json_msg["payload"])
 
-    @staticmethod
-    def send_msg(sender_id, receiver_id, receiver_ip, receiver_port, cmd, payload):
-        SendMsg(sender_id, receiver_id, receiver_ip, receiver_port, cmd, payload)
+    def send_msg(self, receiver_ip, receiver_port, cmd, payload):
+        json_msg = json.dumps({'sID': str(self.id), 'time': str(time.strftime("%d-%m-%Y %H:%M:%S",
+                                                                              time.gmtime())), 'cmd': str(cmd),
+                               'payload': str(payload)})
+        self.send_socket.sendto(json_msg, (receiver_ip, int(receiver_port)))
 
     # Handling of received Messages
     def msg_handling(self, msg):
@@ -144,20 +142,19 @@ class Node:
         elif command == "rmInit":
             self.isInitiator = False
         elif command == "randNG":
-            self.generate_network("")
+            self.set_online_nodes(json_msg["payload"])
+            self.generate_random_network()
         elif command == "graphNG":
-            self.generate_network(json_msg["graphFile"])
+            self.generate_network_by_graph(json_msg["payload"])
         # Network-Msg
-        elif command == "onNodes":
-            self.set_online_nodes(json_msg["id_list"])
         elif command == "nID":
-            self.neighborNodes.append(self.get_params(json_msg["neighbourID"]))
+            self.neighborNodes.append(self.get_params(json_msg["payload"]))
         elif command == "genGraph":
             msg = ""
             for i in range(0, len(self.neighborNodes) - 1):
                 msg += str((self.neighborNodes[i])['id']) + ";"
             msg = msg[:-1]
-            self.send_msg(self.id, self.observerID, self.observerIP, self.observerPort, "genGraphAck", msg)
+            self.send_msg(self.observerIP, self.observerPort, "genGraphAck", msg)
             return
         # Other-Msg
         elif command == "msg":
