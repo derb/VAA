@@ -18,11 +18,19 @@ class Node:
 
     onlineNodes = []        # List of all online Nodes
     neighborNodes = []      # List of Neighbor Nodes
+
     id = -1                 # ID of the Node
     ip = -1                 # IP of the Node
     port = -1               # Port-Number of the Node
 
     isInitiator = False     # True, if node is Initiator
+
+    def __init__(self, node_id):
+        self.id = node_id
+        self.set_owen_params()
+
+    def __del__(self):
+        self.listen_socket.close()
 
     @staticmethod
     def get_params(searched_id):
@@ -74,7 +82,7 @@ class Node:
 
     def generate_network_by_graph(self, graph_file):
         graph = open(graph_file, 'r')
-        graph_neigbours = []
+        graph_neighbours = []
         not_finished = True
 
         while not_finished:
@@ -82,10 +90,10 @@ class Node:
             if current_entry == "":
                 not_finished = False
             elif current_entry.startswith(str(self.id)):
-                graph_neigbours.append(current_entry[current_entry.rindex(' ') + 1:current_entry.rindex(';')])
+                graph_neighbours.append(current_entry[current_entry.rindex(' ') + 1:current_entry.rindex(';')])
 
-        for i in graph_neigbours:
-            self.neighborNodes.append(self.get_params(graph_neigbours[i]))
+        for i in graph_neighbours:
+            self.neighborNodes.append(self.get_params(graph_neighbours[i]))
 
     def generate_network(self, graph_file):
         if graph_file == "":
@@ -108,13 +116,6 @@ class Node:
             self.print_msg(msg)
             thread.start_new_thread(self.msg_handling(msg), ())
 
-    def __del__(self):
-        self.listen_socket.close()
-
-    def __init__(self, node_id):
-        self.id = node_id
-        self.set_owen_params()
-
     # Message print
     @staticmethod
     def print_msg(msg):
@@ -126,8 +127,8 @@ class Node:
         print "payload: " + str(json_msg["payload"])
 
     @staticmethod
-    def send_msg(sID, rID, rIP, rPort, cmd, payload):
-        SendMsg(sID, rID, rIP, rPort, cmd, payload)
+    def send_msg(sender_id, receiver_id, receiver_ip, receiver_port, cmd, payload):
+        SendMsg(sender_id, receiver_id, receiver_ip, receiver_port, cmd, payload)
 
     # Handling of received Messages
     def msg_handling(self, msg):

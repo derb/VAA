@@ -25,11 +25,11 @@ class SendMsg:
                                'payload': str(self.payload)})
         return json_msg
 
-    def __init__(self, sID, rID, rIP, rPort, cmd, payload):
-        self.sender_id = sID
-        self.receiver_id = rID
-        self.receiver_ip = rIP
-        self.receiver_port = rPort
+    def __init__(self, sender_id, receiver_id, receiver_ip, receiver_port, cmd, payload):
+        self.sender_id = sender_id
+        self.receiver_id = receiver_id
+        self.receiver_ip = receiver_ip
+        self.receiver_port = receiver_port
         self.command = cmd
         self.payload = payload
         self.send_msg()
