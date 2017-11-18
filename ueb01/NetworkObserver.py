@@ -101,7 +101,7 @@ class NetworkObserver:
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
             self.send_msg(current_node[1], current_node[2], "randNG", payload)
-            time.sleep(0.5)
+            time.sleep(2)
 
     def request_network_graph(self):
         for i in range(len(self.onlineNodes)):

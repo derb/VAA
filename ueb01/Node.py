@@ -83,6 +83,7 @@ class Node:
             if not self.is_in_neighbour_list(possible_node):
                 self.neighborNodes.append(possible_node)
                 self.send_msg(possible_node[1], possible_node[2], "newNeighbour", self.id)
+        return
 
     def generate_network_by_graph(self, graph_file):
         graph = open(graph_file, 'r')
@@ -123,11 +124,13 @@ class Node:
     @staticmethod
     def print_msg(msg):
         json_msg = json.loads(msg)
+        print ""
         print "____ Message ____"
         print "from: " + str(json_msg["sID"])
         print "received time: " + str(json_msg["time"])
         print "command: " + str(json_msg["cmd"])
         print "payload: " + str(json_msg["payload"])
+        print ""
 
     def send_msg(self, receiver_ip, receiver_port, cmd, payload):
         json_msg = json.dumps({'sID': str(self.id), 'time': str(time.strftime("%d-%m-%Y %H:%M:%S",
@@ -169,7 +172,7 @@ class Node:
             self.send_msg(self.observerIP, self.observerPort, "genGraphAck", msg)
             return
         elif command == "newNeighbour":
-            self.neighborNodes.append(self.get_params(json_msg["payload"]))
+            self.neighborNodes.append(self.get_online_params(json_msg["payload"]))
         # Other-Msg
         elif command == "msg":
             return
