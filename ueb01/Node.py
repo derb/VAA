@@ -79,7 +79,7 @@ class Node:
 
     def generate_random_network(self):
         while len(self.neighborNodes) < 3:
-            possible_node = self.onlineNodes[random.randint(0, len(self.onlineNodes))]
+            possible_node = self.onlineNodes[random.randint(0, len(self.onlineNodes) - 1)]
             if not self.is_in_neighbour_list(possible_node):
                 self.neighborNodes.append(possible_node)
                 self.send_msg(possible_node[1], possible_node[2], "newNeighbour", self.id)
