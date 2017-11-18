@@ -4,6 +4,7 @@ import socket
 import string
 import json
 import time
+import threading
 
 
 class NetworkObserver:
@@ -20,9 +21,13 @@ class NetworkObserver:
 
     currentNetworkGraph = ""    # Graph of current Network if requested
 
+    sum_received = 0
+
     # ____________________________ BEGIN: init & del _________________________________________________________________
     def __init__(self):
         self.get_online_nodes()
+        listener = threading.Thread(target=self.listen)
+        listener.start()
 
     def __del__(self):
         self.listen_socket.close()
@@ -34,8 +39,7 @@ class NetworkObserver:
         print "Observer: " + str(self.id) + " listens on Socket: " + str(self.port)
         while True:
             msg, addr = self.listen_socket.recvfrom(1024)  # Buffer-Size set to 1024 bytes
-            break
-        self.handle_msg(msg)
+            self.handle_msg(msg)
 
     def send_msg(self, receiver_ip, receiver_port, cmd, payload):
         json_msg = json.dumps({'sID': str(self.id), 'time': str(time.strftime("%d-%m-%Y %H:%M:%S",
@@ -81,7 +85,7 @@ class NetworkObserver:
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
             self.send_msg(current_node[1], current_node[2], "randNG", payload)
-            time.sleep(2)
+            time.sleep(0.5)
 
     def generate_graph_file(self, caller, callee_list):
         if self.currentNetworkGraph == "":
@@ -93,13 +97,16 @@ class NetworkObserver:
         for i in range(len(callees)):
             self.currentNetworkGraph += caller + " -- " + callees[i] + "\n"
         self.currentNetworkGraph += "}"
+        if self.sum_received == len(self.onlineNodes):
+            graph_file = open("graph.dot", "w")
+            graph_file.write(self.currentNetworkGraph)
+            graph_file.close()
+            self.sum_received = 0
 
     def request_network_graph(self):
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
             self.send_msg(current_node[1], current_node[2], "genGraph", "")
-            self.listen()
-        print self.currentNetworkGraph
     # ____________________________ END: Logic ________________________________________________________________________
 
     # ____________________________ BEGIN: RUN & MSG-Handling _________________________________________________________
@@ -108,6 +115,7 @@ class NetworkObserver:
 
         command = str(json_msg["cmd"])
         if command == "genGraphAck":
+            self.sum_received += 1
             self.generate_graph_file(json_msg["sID"], json_msg["payload"])
 
     @staticmethod

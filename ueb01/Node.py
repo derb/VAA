@@ -76,12 +76,14 @@ class Node:
 
     # ____________________________ BEGIN: Network-Generation _________________________________________________________
     def generate_random_network(self):
+        payload = ""
         while len(self.neighborNodes) < 3:
             possible_node = self.onlineNodes[random.randint(0, len(self.onlineNodes) - 1)]
             if not self.is_in_neighbour_list(possible_node):
                 self.neighborNodes.append(possible_node)
-                self.send_msg(possible_node[1], possible_node[2], "newNeighbour", self.id)
-        return
+                payload += self.id + "," + self.ip + "," + self.port
+                self.send_msg(possible_node[1], possible_node[2], "newNeighbour", payload)
+        print self.neighborNodes
 
     def generate_network_by_graph(self, graph_file):
         graph = open(graph_file, 'r')
@@ -98,6 +100,16 @@ class Node:
         for i in graph_neighbours:
             self.neighborNodes.append(self.get_params(graph_neighbours[i]))
     # ____________________________ END: Network-Generation ___________________________________________________________
+
+    # ____________________________ BEGIN: Network-Graph-Generation ___________________________________________________
+    def network_graph_feedback(self):
+        neighbour_str = ""
+        for i in range(len(self.neighborNodes)):
+            neighbour_str += self.neighborNodes[i][0] + ";"
+        neighbour_str = neighbour_str[:-1]
+        time.sleep(0.5)
+        self.send_msg(self.observerIP, self.observerPort, "genGraphAck", neighbour_str)
+    # ____________________________ END: Network-Graph-Generation _____________________________________________________
 
     # ____________________________ BEGIN: Node-Management-Functions __________________________________________________
     def is_in_neighbour_list(self, searched_node):
@@ -164,14 +176,10 @@ class Node:
         elif command == "nID":
             self.neighborNodes.append(self.get_params(json_msg["payload"]))
         elif command == "genGraph":
-            msg = ""
-            for i in range(0, len(self.neighborNodes) - 1):
-                msg += str((self.neighborNodes[i])['id']) + ";"
-            msg = msg[:-1]
-            self.send_msg(self.observerIP, self.observerPort, "genGraphAck", msg)
-            return
+            self.network_graph_feedback()
         elif command == "newNeighbour":
-            self.neighborNodes.append(self.get_online_params(json_msg["payload"]))
+            new_neighbour = str(json_msg["payload"]).split(",")
+            self.neighborNodes.append((new_neighbour[0], new_neighbour[1], new_neighbour[2]))
         # Other-Msg
         elif command == "msg":
             return
