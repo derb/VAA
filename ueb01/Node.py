@@ -4,7 +4,6 @@ import random
 import socket
 import logging
 import json
-import thread
 import time
 
 
@@ -44,7 +43,7 @@ class Node:
             current_entry = config_file.readline()
 
             if current_entry == "":
-                print "Error: Cannot find Port for the ID " + searched_id
+                print "Error: Cannot find Port for the ID " + str(searched_id)
                 return "-1"
             else:
                 blank_pos = string.find(current_entry, " ")
@@ -59,32 +58,31 @@ class Node:
                     port = ce_port
                     return {'id': searched_id, 'ip': ip, 'port': port}
 
+    def get_online_params(self, searched_id):
+        for i in range(len(self.onlineNodes)):
+            current_node = self.onlineNodes[i]
+            if searched_id == current_node[0]:
+                return {'id': current_node[0], 'ip': current_node[1], 'port': current_node[2]}
+        return "-1"
+
     def set_owen_params(self):
         found_params = self.get_params(self.id)
         self.ip = found_params['ip']
         self.port = found_params['port']
 
+    def is_in_neighbour_list(self, searched_node):
+        for i in range(len(self.neighborNodes)):
+            current_node = self.neighborNodes[i]
+            if current_node[0] == searched_node[0]:
+                return 1
+        return 0
+
     def generate_random_network(self):
-        new_neighbours = []
-
-        if len(self.neighborNodes) < 3:
-            if len(self.neighborNodes) != 0:
-                for i in self.neighborNodes:
-                    existing_node = self.neighborNodes[i]
-                    new_neighbours.append(existing_node['id'])
-
-        offset = len(new_neighbours)
-
-        while len(new_neighbours) < 3:
-            new_id = random.randint(0, len(self.onlineNodes))
-            if new_id not in new_neighbours:
-                new_neighbours.append(new_id)
-
-        for i in range(offset, len(new_neighbours) - 1):
-            current_new_neighbour = self.get_params(new_neighbours[i])
-            if current_new_neighbour != "-1":
-                self.neighborNodes.append(current_new_neighbour)
-                self.send_msg(current_new_neighbour['ip'], current_new_neighbour['port'], "newNeighbour", self.id)
+        while len(self.neighborNodes) < 3:
+            possible_node = self.onlineNodes[random.randint(0, len(self.onlineNodes))]
+            if not self.is_in_neighbour_list(possible_node):
+                self.neighborNodes.append(possible_node)
+                self.send_msg(possible_node[1], possible_node[2], "newNeighbour", self.id)
 
     def generate_network_by_graph(self, graph_file):
         graph = open(graph_file, 'r')
@@ -101,9 +99,13 @@ class Node:
         for i in graph_neighbours:
             self.neighborNodes.append(self.get_params(graph_neighbours[i]))
 
-    def set_online_nodes(self, node_id_list_str):
-        self.onlineNodes = str(node_id_list_str).split(";")
-        print self.onlineNodes
+    def set_online_nodes(self, node_list_str):
+        node_list = str(node_list_str).split(";")
+        for i in range(len(node_list)):
+            node = str(node_list[i]).split(",")
+            if node[0] != str(self.id):
+                self.onlineNodes.append((node[0], node[1], node[2]))
+        return
 
     def stop(self):
         self.listen_socket.close()
@@ -115,7 +117,7 @@ class Node:
         while True:
             msg, addr = self.listen_socket.recvfrom(1024)  # Buffer-Size set to 1024 bytes
             self.print_msg(msg)
-            thread.start_new_thread(self.msg_handling(msg), ())
+            self.msg_handling(msg)
 
     # Message print
     @staticmethod
@@ -134,7 +136,7 @@ class Node:
         self.send_socket.sendto(json_msg, (receiver_ip, int(receiver_port)))
 
     def send_to_neighbours(self, cmd, payload):
-        for i in len(self.neighborNodes):
+        for i in range(len(self.neighborNodes)):
             current_neighbour = self.neighborNodes[i]
             self.send_msg(current_neighbour[1], current_neighbour[2], cmd, payload)
 

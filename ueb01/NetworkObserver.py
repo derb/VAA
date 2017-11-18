@@ -3,7 +3,6 @@ import logging
 import socket
 import string
 import json
-import thread
 import time
 
 
@@ -58,7 +57,8 @@ class NetworkObserver:
         print "Observer: " + str(self.id) + " listens on Socket: " + str(self.port)
         while True:
             msg, addr = self.listen_socket.recvfrom(1024)  # Buffer-Size set to 1024 bytes
-            thread.start_new_thread(self.handle_msg(msg), ())
+            break
+        self.handle_msg(msg)
 
     def handle_msg(self, msg):
         json_msg = json.loads(msg)
@@ -92,15 +92,15 @@ class NetworkObserver:
                 return "-1"
 
     def initiate_rand_network(self):
-        online_node_id_list = ""
+        payload = ""
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
-            online_node_id_list += current_node[0] + ";"
-        online_node_id_list = online_node_id_list[:-1]   # remove obsolete ;
+            payload += str(current_node[0]) + "," + str(current_node[1]) + "," + str(current_node[2]) + ";"
+        payload = payload[:-1]
 
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
-            self.send_msg(current_node[1], current_node[2], "randNG", online_node_id_list)
+            self.send_msg(current_node[1], current_node[2], "randNG", payload)
             time.sleep(0.5)
 
     def request_network_graph(self):
