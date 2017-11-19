@@ -40,7 +40,6 @@ class Node:
     def get_params(searched_id):
         config_file = open('config', 'r')
         not_found = True
-        print searched_id
 
         while not_found:
             current_entry = config_file.readline()
@@ -59,7 +58,7 @@ class Node:
                 if searched_id == ce_id:
                     ip = ce_ip
                     port = ce_port
-                    return {'id': searched_id, 'ip': ip, 'port': port}
+                    return searched_id, ip, port
 
     def get_online_params(self, searched_id):
         for i in range(len(self.onlineNodes)):
@@ -70,8 +69,8 @@ class Node:
 
     def set_owen_params(self):
         found_params = self.get_params(self.id)
-        self.ip = found_params['ip']
-        self.port = found_params['port']
+        self.ip = found_params[1]
+        self.port = found_params[2]
     # ____________________________ END: get and set Node IDs, IPs & Ports ____________________________________________
 
     # ____________________________ BEGIN: Network-Generation _________________________________________________________
@@ -88,16 +87,21 @@ class Node:
     def generate_network_by_graph(self, graph_file):
         graph = open(graph_file, 'r')
         graph_neighbours = []
-        not_finished = True
+        finished = False
 
-        while not_finished:
+        while not finished:
             current_entry = graph.readline()
-            if current_entry == "":
-                not_finished = False
-            elif current_entry.startswith(str(self.id)):
-                graph_neighbours.append(current_entry[current_entry.rindex(' ') + 1:current_entry.rindex(';')])
-
-        for i in graph_neighbours:
+            if current_entry.startswith("}"):
+                finished = True
+            else:
+                if not current_entry.startswith("graph"):
+                    caller_callee = current_entry.split(" -- ")
+                    caller_callee[1] = caller_callee[1].rstrip(';\n')
+                    if caller_callee[0] == self.id:
+                        graph_neighbours.append(caller_callee[1])
+                    elif caller_callee[1] == self.id:
+                        graph_neighbours.append(caller_callee[0])
+        for i in range(len(graph_neighbours)):
             self.neighborNodes.append(self.get_params(graph_neighbours[i]))
     # ____________________________ END: Network-Generation ___________________________________________________________
 
@@ -130,9 +134,9 @@ class Node:
 
     # ____________________________ BEGIN: Send-Functions _____________________________________________________________
     def send_msg(self, receiver_ip, receiver_port, cmd, payload):
-        json_msg = json.dumps({'sID': str(self.id), 'time': str(time.strftime("%d-%m-%Y %H:%M:%S",
-                                                                              time.gmtime())), 'cmd': str(cmd),
-                               'payload': str(payload)})
+        json_msg = json.dumps({'sID': str(self.id), 'time': str(time.strftime("%d-%m-%Y %H:%M:%S", time.gmtime())),
+                               'cmd': str(cmd), 'payload': str(payload)})
+        self.print_send_msg(json_msg, receiver_ip, receiver_port)
         self.send_socket.sendto(json_msg, (receiver_ip, int(receiver_port)))
 
     def send_to_neighbours(self, cmd, payload):
@@ -142,16 +146,28 @@ class Node:
     # ____________________________ END: Send-Functions _______________________________________________________________
 
     # ____________________________ BEGIN: Message-Handling ___________________________________________________________
-    # Message print
+    # Send-Message print
+    @staticmethod
+    def print_send_msg(msg, receiver_ip, receiver_port):
+        json_msg = json.loads(msg)
+        print ""
+        print "________ Message - Sending ________"
+        print "to:              " + str(receiver_ip + ":" + str(receiver_port))
+        print "send time:       " + str(json_msg["time"])
+        print "command:         " + str(json_msg["cmd"])
+        print "payload:         " + str(json_msg["payload"])
+        print ""
+
+    # Receive-Message print
     @staticmethod
     def print_msg(msg):
         json_msg = json.loads(msg)
         print ""
-        print "____ Message ____"
-        print "from: " + str(json_msg["sID"])
-        print "received time: " + str(json_msg["time"])
-        print "command: " + str(json_msg["cmd"])
-        print "payload: " + str(json_msg["payload"])
+        print "________ Message - Received ________"
+        print "from:            " + str(json_msg["sID"])
+        print "received time:   " + str(json_msg["time"])
+        print "command:         " + str(json_msg["cmd"])
+        print "payload:         " + str(json_msg["payload"])
         print ""
 
     # Handling of received Messages

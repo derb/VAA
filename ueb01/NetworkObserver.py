@@ -13,8 +13,6 @@ class NetworkObserver:
     # Socket for Message-Sending
     send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    listener = threading
-
     id = 0                      # Fix ID for the Network-Observer
     observerIP = "127.0.0.1"    # Fix IP for the Network-Observer
     port = 5001                 # Fix Port of the Network-Observer
@@ -29,9 +27,9 @@ class NetworkObserver:
     # ____________________________ BEGIN: init & del _________________________________________________________________
     def __init__(self):
         self.get_online_nodes()
-        self.listener = threading.Thread(target=self.listen)
-        self.listener.setDaemon(True)
-        self.listener.start()
+        listener = threading.Thread(target=self.listen)
+        listener.setDaemon(True)
+        listener.start()
 
     def __del__(self):
         self.listen_socket.close()
@@ -93,8 +91,15 @@ class NetworkObserver:
                 time.sleep(0.1)
             self.akk_received = False
 
+    def initiate_network_by_graph(self):
+        graph_file = raw_input("\nGraph-File: ")
+        for i in range(len(self.onlineNodes)):
+            current_node = self.onlineNodes[i]
+            self.send_msg(current_node[1], current_node[2], "graphNG", graph_file)
+
     def clean_graph_list(self):
         tmp_list = []
+        self.graph_list.sort(key=lambda x: x[0])
         for i in range(len(self.graph_list)):
             found = False
             current_element = self.graph_list[i]
@@ -142,18 +147,18 @@ class NetworkObserver:
 
     @staticmethod
     def print_commands():
-        print "EXIT:                    0" + "\n" + \
-              "List all Nodes:          1" + "\n" + \
-              "End Node by ID:          2" + "\n" + \
-              "End all Nodes:           3" + "\n" + \
-              "Initiate random Network: 4" + "\n" + \
-              "Get Network-Graph:       5"
+        print "EXIT:                        0" + "\n" + \
+              "List all Nodes:              1" + "\n" + \
+              "End Node by ID:              2" + "\n" + \
+              "End all Nodes:               3" + "\n" + \
+              "Initiate random Network:     4" + "\n" + \
+              "Initiate Network by Graph:   5" + "\n" + \
+              "Get Network-Graph:           6"
 
     def run(self):
         while True:
             print self.print_commands()
             input_str = raw_input("\nCommand: ")
-
             if input_str == "0":
                 self.__del__()
             elif input_str == "1":
@@ -171,6 +176,8 @@ class NetworkObserver:
             elif input_str == "4":
                 self.initiate_rand_network()
             elif input_str == "5":
+                self.initiate_network_by_graph()
+            elif input_str == "6":
                 self.graph_list = []
                 self.request_network_graph()
             else:
