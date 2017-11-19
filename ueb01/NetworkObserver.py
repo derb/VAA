@@ -13,30 +13,34 @@ class NetworkObserver:
     # Socket for Message-Sending
     send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+    listener = threading
+
     id = 0                      # Fix ID for the Network-Observer
     observerIP = "127.0.0.1"    # Fix IP for the Network-Observer
     port = 5001                 # Fix Port of the Network-Observer
 
     onlineNodes = []            # List of all online Nodes
 
-    currentNetworkGraph = ""    # Graph of current Network if requested
+    graph_list = []     # Graph of current Network if requested
 
     sum_received = 0
+    akk_received = False
 
     # ____________________________ BEGIN: init & del _________________________________________________________________
     def __init__(self):
         self.get_online_nodes()
-        listener = threading.Thread(target=self.listen)
-        listener.start()
+        self.listener = threading.Thread(target=self.listen)
+        self.listener.setDaemon(True)
+        self.listener.start()
 
     def __del__(self):
         self.listen_socket.close()
+        sys.exit(0)
     # ____________________________ END: init & del ___________________________________________________________________
 
     # ____________________________ BEGIN: Send- & Receive-Functions __________________________________________________
     def listen(self):
         self.listen_socket.bind((self.observerIP, int(self.port)))
-        print "Observer: " + str(self.id) + " listens on Socket: " + str(self.port)
         while True:
             msg, addr = self.listen_socket.recvfrom(1024)  # Buffer-Size set to 1024 bytes
             self.handle_msg(msg)
@@ -85,21 +89,37 @@ class NetworkObserver:
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
             self.send_msg(current_node[1], current_node[2], "randNG", payload)
-            time.sleep(0.5)
+            while not self.akk_received:
+                time.sleep(0.1)
+            self.akk_received = False
+
+    def clean_graph_list(self):
+        tmp_list = []
+        for i in range(len(self.graph_list)):
+            found = False
+            current_element = self.graph_list[i]
+            for j in range(len(tmp_list)):
+                tmp_element = tmp_list[j]
+                if tmp_element[1] == current_element[0]:
+                    if tmp_element[0] == current_element[1]:
+                        found = True
+            if not found:
+                tmp_list.append(current_element)
+        self.graph_list = tmp_list
 
     def generate_graph_file(self, caller, callee_list):
-        if self.currentNetworkGraph == "":
-            self.currentNetworkGraph = "graph G {\n"
-        else:
-            self.currentNetworkGraph = self.currentNetworkGraph[:-1]
-
         callees = str(callee_list).split(";")
         for i in range(len(callees)):
-            self.currentNetworkGraph += caller + " -- " + callees[i] + "\n"
-        self.currentNetworkGraph += "}"
+            self.graph_list.append((caller, callees[i]))
         if self.sum_received == len(self.onlineNodes):
+            self.clean_graph_list()
+            graph_str = "graph G {\n"
+            for i in range(len(self.graph_list)):
+                current_element = self.graph_list[i]
+                graph_str += current_element[0] + " -- " + current_element[1] + ";\n"
+            graph_str += "}"
             graph_file = open("graph.dot", "w")
-            graph_file.write(self.currentNetworkGraph)
+            graph_file.write(graph_str)
             graph_file.close()
             self.sum_received = 0
 
@@ -117,6 +137,8 @@ class NetworkObserver:
         if command == "genGraphAck":
             self.sum_received += 1
             self.generate_graph_file(json_msg["sID"], json_msg["payload"])
+        if command == "findNeighboursAck":
+            self.akk_received = True
 
     @staticmethod
     def print_commands():
@@ -130,10 +152,10 @@ class NetworkObserver:
     def run(self):
         while True:
             print self.print_commands()
-            input_str = raw_input("Command: ")
+            input_str = raw_input("\nCommand: ")
 
             if input_str == "0":
-                    sys.exit(0)
+                self.__del__()
             elif input_str == "1":
                 print self.onlineNodes
             elif input_str == "2":
@@ -149,6 +171,7 @@ class NetworkObserver:
             elif input_str == "4":
                 self.initiate_rand_network()
             elif input_str == "5":
+                self.graph_list = []
                 self.request_network_graph()
             else:
                 print "\nNo such command\n\n"
@@ -165,7 +188,7 @@ def main(argv):
     except Exception as e:
         logging.basicConfig(filename='network_observer.log', level=logging.DEBUG)
         logging.critical(str(type(e)) + " : " + str(e.args))
-        sys.exit(6)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

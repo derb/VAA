@@ -83,7 +83,7 @@ class Node:
                 self.neighborNodes.append(possible_node)
                 payload += self.id + "," + self.ip + "," + self.port
                 self.send_msg(possible_node[1], possible_node[2], "newNeighbour", payload)
-        print self.neighborNodes
+        self.send_msg(self.observerIP, self.observerPort, "findNeighboursAck", "")
 
     def generate_network_by_graph(self, graph_file):
         graph = open(graph_file, 'r')
@@ -210,7 +210,7 @@ def main(argv):
     except Exception as e:
         logging.basicConfig(filename='node.log', level=logging.DEBUG)
         logging.critical(str(type(e)) + " : " + str(e.args))
-        sys.exit(6)
+        sys.exit(2)
 
 
 if __name__ == "__main__":
