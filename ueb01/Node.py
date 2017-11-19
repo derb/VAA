@@ -85,24 +85,28 @@ class Node:
         self.send_msg(self.observerIP, self.observerPort, "findNeighboursAck", "")
 
     def generate_network_by_graph(self, graph_file):
-        graph = open(graph_file, 'r')
-        graph_neighbours = []
-        finished = False
+        try:
+            graph = open(graph_file, 'r')
+            graph_neighbours = []
+            finished = False
 
-        while not finished:
-            current_entry = graph.readline()
-            if current_entry.startswith("}"):
-                finished = True
-            else:
-                if not current_entry.startswith("graph"):
-                    caller_callee = current_entry.split(" -- ")
-                    caller_callee[1] = caller_callee[1].rstrip(';\n')
-                    if caller_callee[0] == self.id:
-                        graph_neighbours.append(caller_callee[1])
-                    elif caller_callee[1] == self.id:
-                        graph_neighbours.append(caller_callee[0])
-        for i in range(len(graph_neighbours)):
-            self.neighborNodes.append(self.get_params(graph_neighbours[i]))
+            while not finished:
+                current_entry = graph.readline()
+                if current_entry.startswith("}"):
+                    finished = True
+                else:
+                    if not current_entry.startswith("graph"):
+                        caller_callee = current_entry.split(" -- ")
+                        caller_callee[1] = caller_callee[1].rstrip(';\n')
+                        if caller_callee[0] == self.id:
+                            graph_neighbours.append(caller_callee[1])
+                        elif caller_callee[1] == self.id:
+                            graph_neighbours.append(caller_callee[0])
+            for i in range(len(graph_neighbours)):
+                self.neighborNodes.append(self.get_params(graph_neighbours[i]))
+        except IOError:
+            print "not a valid Graph-File\n"
+            pass
     # ____________________________ END: Network-Generation ___________________________________________________________
 
     # ____________________________ BEGIN: Network-Graph-Generation ___________________________________________________
@@ -130,6 +134,10 @@ class Node:
             if node[0] != str(self.id):
                 self.onlineNodes.append((node[0], node[1], node[2]))
         return
+
+    def remove_finished_node(self, node_id):
+        self.neighborNodes = [(n_id, ip, port) for n_id, ip, port in self.neighborNodes if n_id != node_id]
+
     # ____________________________ END: Node-Management-Functions ____________________________________________________
 
     # ____________________________ BEGIN: Send-Functions _____________________________________________________________
@@ -178,6 +186,7 @@ class Node:
 
         # Control-Msg
         if command == "end":
+            self.send_to_neighbours("endedNeighbour", "")
             self.stop()
         elif command == "setInit":
             self.isInitiator = True
@@ -189,8 +198,8 @@ class Node:
         elif command == "graphNG":
             self.generate_network_by_graph(json_msg["payload"])
         # Network-Msg
-        elif command == "nID":
-            self.neighborNodes.append(self.get_params(json_msg["payload"]))
+        elif command == "endedNeighbour":
+            self.remove_finished_node(json_msg["sID"])
         elif command == "genGraph":
             self.network_graph_feedback()
         elif command == "newNeighbour":

@@ -132,6 +132,9 @@ class NetworkObserver:
         for i in range(len(self.onlineNodes)):
             current_node = self.onlineNodes[i]
             self.send_msg(current_node[1], current_node[2], "genGraph", "")
+
+    def remove_finished_node(self, node_id):
+        self.onlineNodes = [(n_id, ip, port) for n_id, ip, port in self.onlineNodes if n_id != node_id]
     # ____________________________ END: Logic ________________________________________________________________________
 
     # ____________________________ BEGIN: RUN & MSG-Handling _________________________________________________________
@@ -147,18 +150,20 @@ class NetworkObserver:
 
     @staticmethod
     def print_commands():
-        print "EXIT:                        0" + "\n" + \
-              "List all Nodes:              1" + "\n" + \
-              "End Node by ID:              2" + "\n" + \
-              "End all Nodes:               3" + "\n" + \
-              "Initiate random Network:     4" + "\n" + \
-              "Initiate Network by Graph:   5" + "\n" + \
-              "Get Network-Graph:           6"
+        return "\n"                                      \
+               "EXIT:                        0" + "\n" + \
+               "List all Nodes:              1" + "\n" + \
+               "End Node by ID:              2" + "\n" + \
+               "End all Nodes:               3" + "\n" + \
+               "Initiate random Network:     4" + "\n" + \
+               "Initiate Network by Graph:   5" + "\n" + \
+               "Get Network-Graph:           6" + "\n" + \
+               ""
 
     def run(self):
         while True:
             print self.print_commands()
-            input_str = raw_input("\nCommand: ")
+            input_str = raw_input("Command: ")
             if input_str == "0":
                 self.__del__()
             elif input_str == "1":
@@ -170,6 +175,7 @@ class NetworkObserver:
                     print "Could not find Node by this ID"
                 else:
                     self.send_msg(node_to_stop[1], node_to_stop[2], "end", "")
+                    self.remove_finished_node(node_id)
             elif input_str == "3":
                 for i in range(len(self.onlineNodes)):
                     self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "end", "")
