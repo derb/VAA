@@ -35,6 +35,51 @@ class Node:
         self.listen_socket.close()
     # ____________________________ END: init & del ___________________________________________________________________
 
+    # ____________________________ BEGIN: rumor experiment ___________________________________________________________
+    first_heard = "-1"          # ID of Node, rumor first heard from
+    rumor_handled = False       # True if rumor already spread
+
+    rumor = ""                  # Rumor
+
+    c_value = -1                # Value of how often rumor must be received to be believed
+    rumor_heard = 0             # Value of how often rumor has been heard
+    believe_rumor = False       # True if rumor is believed
+
+    def spread_rumor(self, rumor_msg):
+        self.rumor_handled = True
+        for i in range(len(self.onlineNodes)):
+            send_to = self.onlineNodes[i]
+            if send_to[0] != self.first_heard:
+                self.send_msg(send_to[1], send_to[2], "spreadRumor", rumor_msg)
+
+    def hear_rumor(self, sender_id, rumor_msg):
+        if self.isInitiator:
+            self.believe_rumor = True   # Initiator always believe rumor
+        else:
+            if self.first_heard == "-1":
+                self.first_heard = sender_id
+                self.rumor = rumor_msg
+            else:
+                if rumor_msg == self.rumor:
+                    self.rumor_heard += 1
+        if not self.rumor_handled:
+            self.spread_rumor(self.rumor)
+        if self.rumor_heard >= self.c_value:
+            self.believe_rumor = True
+
+    def initiate_rumor_experiment(self, c, rumor_msg):
+        self.c_value = c
+        self.rumor = rumor_msg
+        # start rumor if initiator
+        if self.isInitiator:
+            # wait random time from 0 to 2 to spread rumor
+            time.sleep(random.randint(0, 2))
+            self.spread_rumor(self.rumor)
+
+    def rumor_status_feedback(self):
+        self.send_msg(self.observerIP, self.observerPort, "rumorStat", self.believe_rumor)
+    # ____________________________ END: rumor experiment _____________________________________________________________
+
     # ____________________________ BEGIN: get and set Node IDs, IPs & Ports __________________________________________
     @staticmethod
     def get_params(searched_id):
