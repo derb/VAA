@@ -47,38 +47,46 @@ class Node:
 
     def spread_rumor(self, rumor_msg):
         self.rumor_handled = True
-        for i in range(len(self.onlineNodes)):
-            send_to = self.onlineNodes[i]
+        for i in range(len(self.neighborNodes)):
+            send_to = self.neighborNodes[i]
             if send_to[0] != self.first_heard:
                 self.send_msg(send_to[1], send_to[2], "spreadRumor", rumor_msg)
 
     def hear_rumor(self, sender_id, rumor_msg):
-        if self.isInitiator:
-            self.believe_rumor = True   # Initiator always believe rumor
+        if self.first_heard == "-1":
+            self.first_heard = sender_id
+            self.rumor = rumor_msg
+            self.rumor_heard += 1
         else:
-            if self.first_heard == "-1":
-                self.first_heard = sender_id
-                self.rumor = rumor_msg
-            else:
-                if rumor_msg == self.rumor:
-                    self.rumor_heard += 1
+            if rumor_msg == self.rumor:
+                self.rumor_heard += 1
         if not self.rumor_handled:
             self.spread_rumor(self.rumor)
         if self.rumor_heard >= self.c_value:
             self.believe_rumor = True
 
-    def initiate_rumor_experiment(self, c, rumor_msg):
-        self.c_value = c
-        self.rumor = rumor_msg
+    def initiate_rumor_experiment(self, c):
+        self.c_value = int(c)
         # start rumor if initiator
         if self.isInitiator:
-            # wait random time from 0 to 2 to spread rumor
-            time.sleep(random.randint(0, 2))
+            self.rumor = str(random.randint(1, 11))
+            self.believe_rumor = True  # Initiator always believe rumor
+            time.sleep(random.randint(1, 4) * 0.1)
             self.spread_rumor(self.rumor)
 
     def rumor_status_feedback(self):
-        self.send_msg(self.observerIP, self.observerPort, "rumorStat", self.believe_rumor)
-    # ____________________________ END: rumor experiment _____________________________________________________________
+        msg = "Rumor: " + self.rumor + " -> Rumor heard: " + str(self.rumor_heard) + " -> believe: " + \
+              str(self.believe_rumor) + "  [is Initiator:  " + str(self.isInitiator) + "]"
+        self.send_msg(self.observerIP, self.observerPort, "rumorStat", msg)
+
+    def reset_rumor_experiment(self):
+        self.first_heard = "-1"
+        self.rumor_handled = False
+        self.rumor = ""
+        self.c_value = -1
+        self.rumor_heard = 0
+        self.believe_rumor = False
+        # ____________________________ END: rumor experiment _____________________________________________________________
 
     # ____________________________ BEGIN: get and set Node IDs, IPs & Ports __________________________________________
     @staticmethod
@@ -260,6 +268,19 @@ class Node:
             new_neighbour = str(json_msg["payload"]).split(",")
             self.neighborNodes.append((new_neighbour[0], new_neighbour[1], new_neighbour[2]))
 
+        # Rumor-Experiment-Msg
+        elif command == "startRumor":
+            # Start Rumor Experiment
+            self.initiate_rumor_experiment(json_msg["payload"])
+        elif command == "spreadRumor":
+            # hear Rumor
+            self.hear_rumor(json_msg["sID"], json_msg["payload"])
+        elif command == "getRumorStat":
+            # send Rumor Experiment Status
+            self.rumor_status_feedback()
+        elif command == "resetRumorExperiment":
+            # reset Rumor Experiment
+            self.reset_rumor_experiment()
         # Other-Msg
         elif command == "msg":
             return

@@ -48,6 +48,14 @@ class NetworkObserver:
                                                                               time.gmtime())), 'cmd': str(cmd),
                                'payload': str(payload)})
         self.send_socket.sendto(json_msg, (receiver_ip, int(receiver_port)))
+
+    def send_msg_to_all(self, cmd, payload):
+        json_msg = json.dumps({'sID': str(self.id), 'time': str(time.strftime("%d-%m-%Y %H:%M:%S",
+                                                                              time.gmtime())), 'cmd': str(cmd),
+                               'payload': str(payload)})
+        for i in range(len(self.onlineNodes)):
+            receiver = self.onlineNodes[i]
+            self.send_socket.sendto(json_msg, (receiver[1], int(receiver[2])))
     # ____________________________ END: Send- & Receive-Functions ____________________________________________________
 
     # ____________________________ BEGIN: Node-Management-Functions __________________________________________________
@@ -147,6 +155,8 @@ class NetworkObserver:
             self.generate_graph_file(json_msg["sID"], json_msg["payload"])
         if command == "findNeighboursAck":
             self.akk_received = True
+        if command == "rumorStat":
+            print json_msg["sID"] + " --> " + json_msg["payload"]
 
     @staticmethod
     def print_commands():
@@ -157,7 +167,13 @@ class NetworkObserver:
               "End all Nodes:               3" + "\n" + \
               "Initiate random Network:     4" + "\n" + \
               "Initiate Network by Graph:   5" + "\n" + \
-              "Get Network-Graph:           6" + "\n" + \
+              "Get Network-Graph:           6" + "\n\n" + \
+              "______ Rumor Experiment ______" + "\n" + \
+              "Set Node as Initiator:       7" + "\n" + \
+              "Unset Node as Initiator:     8" + "\n" + \
+              "Start Rumor Experiment:      9" + "\n" + \
+              "Rumor Experiment Status:    10" + "\n" + \
+              "reset Rumor Experiment:     11" + "\n" + \
               ""
 
     def run(self):
@@ -186,6 +202,37 @@ class NetworkObserver:
             elif input_str == "6":
                 self.graph_list = []
                 self.request_network_graph()
+
+            # Rumor Experiment
+            elif input_str == "7":
+                node_id = raw_input("Node ID: ")
+                node_to_set_initiator = self.get_node_by_id(node_id)
+                if node_to_set_initiator == "-1":
+                    print "Could not find Node by this ID"
+                else:
+                    self.send_msg(node_to_set_initiator[1], node_to_set_initiator[2], "setInit", "")
+            elif input_str == "8":
+                node_id = raw_input("Node ID: ")
+                node_to_unset_initiator = self.get_node_by_id(node_id)
+                if node_to_unset_initiator == "-1":
+                    print "Could not find Node by this ID"
+                else:
+                    self.send_msg(node_to_unset_initiator[1], node_to_unset_initiator[2], "rmInit", "")
+            elif input_str == "9":
+                c_value = raw_input("c: ")
+                try:
+                    int(c_value)
+                    is_int = True
+                except ValueError:
+                    is_int = False
+                if is_int:
+                    self.send_msg_to_all("startRumor", c_value)
+                else:
+                    print "c not a valid int"
+            elif input_str == "10":
+                self.send_msg_to_all("getRumorStat", "")
+            elif input_str == "11":
+                self.send_msg_to_all("resetRumorExperiment", "")
             else:
                 print "\nNo such command\n\n"
     # ____________________________ END: RUN &  MSG-Handling __________________________________________________________
