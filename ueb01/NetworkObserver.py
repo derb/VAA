@@ -150,19 +150,19 @@ class NetworkObserver:
 
     @staticmethod
     def print_commands():
-        return "\n"                                      \
-               "EXIT:                        0" + "\n" + \
-               "List all Nodes:              1" + "\n" + \
-               "End Node by ID:              2" + "\n" + \
-               "End all Nodes:               3" + "\n" + \
-               "Initiate random Network:     4" + "\n" + \
-               "Initiate Network by Graph:   5" + "\n" + \
-               "Get Network-Graph:           6" + "\n" + \
-               ""
+        print "\n"                                      \
+              "EXIT:                        0" + "\n" + \
+              "List all Nodes:              1" + "\n" + \
+              "End Node by ID:              2" + "\n" + \
+              "End all Nodes:               3" + "\n" + \
+              "Initiate random Network:     4" + "\n" + \
+              "Initiate Network by Graph:   5" + "\n" + \
+              "Get Network-Graph:           6" + "\n" + \
+              ""
 
     def run(self):
         while True:
-            print self.print_commands()
+            self.print_commands()
             input_str = raw_input("Command: ")
             if input_str == "0":
                 self.__del__()
