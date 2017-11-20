@@ -184,27 +184,37 @@ class Node:
 
         command = str(json_msg["cmd"])
 
-        # Control-Msg
+        # Node-Control-Msg
         if command == "end":
+            # stop self
             self.send_to_neighbours("endedNeighbour", "")
             self.stop()
         elif command == "setInit":
+            # set self as Initiator
             self.isInitiator = True
         elif command == "rmInit":
+            # unset self as Initiator
             self.isInitiator = False
+
+        # Network-Management-Msg
         elif command == "randNG":
+            # generate random Network
             self.set_online_nodes(json_msg["payload"])
             self.generate_random_network()
         elif command == "graphNG":
+            # generate Network from Graph
             self.generate_network_by_graph(json_msg["payload"])
-        # Network-Msg
-        elif command == "endedNeighbour":
-            self.remove_finished_node(json_msg["sID"])
         elif command == "genGraph":
+            # generate Network-Graph
             self.network_graph_feedback()
+        elif command == "endedNeighbour":
+            # Neighbour has stopped
+            self.remove_finished_node(json_msg["sID"])
         elif command == "newNeighbour":
+            # Node is new Neighbour
             new_neighbour = str(json_msg["payload"]).split(",")
             self.neighborNodes.append((new_neighbour[0], new_neighbour[1], new_neighbour[2]))
+
         # Other-Msg
         elif command == "msg":
             return

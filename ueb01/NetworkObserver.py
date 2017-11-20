@@ -19,7 +19,7 @@ class NetworkObserver:
 
     onlineNodes = []            # List of all online Nodes
 
-    graph_list = []     # Graph of current Network if requested
+    graph_list = []             # Graph of current Network if requested
 
     sum_received = 0
     akk_received = False
