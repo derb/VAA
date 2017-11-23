@@ -63,8 +63,7 @@ class NetworkObserver:
         for i in range(len(self.onlineNodes)):
             if self.onlineNodes[i][0] == node_id:
                 return self.onlineNodes[i]
-            else:
-                return "-1"
+        return "-1"
 
     def get_online_nodes(self):
         config_file = open('config', 'r')

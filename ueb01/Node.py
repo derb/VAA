@@ -86,7 +86,7 @@ class Node:
         self.c_value = -1
         self.rumor_heard = 0
         self.believe_rumor = False
-        # ____________________________ END: rumor experiment _____________________________________________________________
+    # ____________________________ END: rumor experiment _____________________________________________________________
 
     # ____________________________ BEGIN: get and set Node IDs, IPs & Ports __________________________________________
     @staticmethod
@@ -127,7 +127,12 @@ class Node:
     # ____________________________ END: get and set Node IDs, IPs & Ports ____________________________________________
 
     # ____________________________ BEGIN: Network-Generation _________________________________________________________
+    def clear_current_network(self):
+        if len(self.neighborNodes) > 0:
+            self.neighborNodes = []
+
     def generate_random_network(self):
+        self.clear_current_network()
         payload = ""
         while len(self.neighborNodes) < 3:
             possible_node = self.onlineNodes[random.randint(0, len(self.onlineNodes) - 1)]
@@ -138,6 +143,7 @@ class Node:
         self.send_msg(self.observerIP, self.observerPort, "findNeighboursAck", "")
 
     def generate_network_by_graph(self, graph_file):
+        self.clear_current_network()
         try:
             graph = open(graph_file, 'r')
             graph_neighbours = []
