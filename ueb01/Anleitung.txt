@@ -1,0 +1,75 @@
+Anleitung
+
+1. Anlegen einer config:
+
+  ./genConf.sh <anz Knoten>
+
+  -> Dies generiert die Datei "config"
+    diese beinhaltet zu allen Knoten IP und Port (automatisch generiert)
+
+2. Starten der Knoten
+
+  ./start_nodes.sh
+
+  -> Dies startet alle Knoten, die in der config-Datei hinterlegt sind
+  Anm: Zusätzlich gestartete Knoten beenden sich nach dem Start, da sie keine
+    IP und keinen Port für ihre ID aus der Datei entnehmen können
+
+3. Starten des NetworkObserver
+
+  python NetworkObserver.py
+
+  -> erzeugt den Graph in der Datei "gen_graph.dot"
+
+  -> zum Senden von Kontroll-Nachrichten und Abfragen des Netzwerkstatus
+
+________________________________________________________________________________
+
+Erzeugen eines Graphen
+
+  python Graphgen.py <anz Knoten> <anz Kanten>
+
+  -> Ist die Anzahl der Knoten bei verwenden kleiner der der existierenden
+  Knoten, so werden die fehlenden nicht mit dem Netzwerk sein, jedoch weiter
+  laufen
+  -> Ist die Anzahl der Knoten bei verwenden größer der der existierenden
+  Knoten, so werden fehlerhafte Kanten angelegt, die jedoch keine Problem beim
+  Ausführen verursachen, da es sich um eine UDP-Verbindung handlet.
+  Entsprechend gehen Pakete, die an diese Knoten gesendet werden verloren.
+
+
+________________________________________________________________________________
+
+Starten der gesamten Übung auf einmal (Mac OS only)
+
+ ./start_ueb.sh <anz Knoten> <anz Kanten>
+
+  vollzieht Schritt 1. bis 3. und generiert einen Graphen mit entsprechender
+  Kanten-Anzahl
+
+________________________________________________________________________________
+
+Laden eines nicht existierenden Graphen
+
+Dieser Fehler wird Abgefangen, und die Knoten verweisen darauf, dass die Datei
+mit dem Graphen nicht existiert.
+Im Anschluss laufen sie ohne Verbindung zueinander normal weiter.
+
+
+________________________________________________________________________________
+
+Erzeugen eines Graphen des Netzwerkes mittels NetworkObserver
+
+  der Graph wird als "graph.dot" gespeichert.
+
+
+________________________________________________________________________________
+
+start_nodes.sh ist nur für Mac OS geeignet
+
+Wichtig: Bis alle Knoten gestartet sind, nicht den Fokus vom Terminal nehmen.
+    Dies führt zu seltsamen Nebeneffekten.
+    Die Ursache ist mir hierbei nicht bekannt, da die Funktion zum starten neuer
+    Tabs nicht von mir stammt, sondern aus folgender Quelle:
+
+    https://stackoverflow.com/questions/7171725/open-new-terminal-tab-from-command-line-mac-os-x/8188174
