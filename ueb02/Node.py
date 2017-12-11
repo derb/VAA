@@ -35,58 +35,61 @@ class Node:
         self.listen_socket.close()
     # ____________________________ END: init & del ___________________________________________________________________
 
-    # ____________________________ BEGIN: rumor experiment ___________________________________________________________
-    first_heard = "-1"          # ID of Node, rumor first heard from
-    rumor_handled = False       # True if rumor already spread
+    # ____________________________ BEGIN: Echo _______________________________________________________________________
+    first_echo = -1
+    echo_heard = 0
 
-    rumor = ""                  # Rumor
+    def send_echo_msg(self):
+        pass
 
-    c_value = -1                # Value of how often rumor must be received to be believed
-    rumor_heard = 0             # Value of how often rumor has been heard
-    believe_rumor = False       # True if rumor is believed
+    def answer_echo(self):
+        pass
 
-    def spread_rumor(self, rumor_msg):
-        self.rumor_handled = True
-        for i in range(len(self.neighborNodes)):
-            send_to = self.neighborNodes[i]
-            if send_to[0] != self.first_heard:
-                self.send_msg(send_to[1], send_to[2], "spreadRumor", rumor_msg)
+    def handle_echo_msg(self):
+        pass
+    # ____________________________ END: Echo _________________________________________________________________________
 
-    def hear_rumor(self, sender_id, rumor_msg):
-        if self.first_heard == "-1":
-            self.first_heard = sender_id
-            self.rumor = rumor_msg
-            self.rumor_heard += 1
-        else:
-            if rumor_msg == self.rumor:
-                self.rumor_heard += 1
-        if not self.rumor_handled:
-            self.spread_rumor(self.rumor)
-        if self.rumor_heard >= self.c_value:
-            self.believe_rumor = True
+    # ____________________________ BEGIN: Distributed Consensus ______________________________________________________
+    def start_philosopher_exp(self):
+        pass
+    # ____________________________ END: Distributed Consensus ________________________________________________________
 
-    def initiate_rumor_experiment(self, c):
-        self.c_value = int(c)
-        # start rumor if initiator
-        if self.isInitiator:
-            self.rumor = str(random.randint(1, 11))
-            self.believe_rumor = True  # Initiator always believe rumor
-            time.sleep(random.randint(1, 4) * 0.1)
-            self.spread_rumor(self.rumor)
+    # ____________________________ BEGIN: Election ___________________________________________________________________
+    is_coordinator = False
 
-    def rumor_status_feedback(self):
-        msg = "Rumor: " + self.rumor + " -> Rumor heard: " + str(self.rumor_heard) + " -> believe: " + \
-              str(self.believe_rumor) + "  [is Initiator:  " + str(self.isInitiator) + "]"
-        self.send_msg(self.observerIP, self.observerPort, "rumorStat", msg)
+    possible_coordinator = -1
+    election_value = -1
 
-    def reset_rumor_experiment(self):
-        self.first_heard = "-1"
-        self.rumor_handled = False
-        self.rumor = ""
-        self.c_value = -1
-        self.rumor_heard = 0
-        self.believe_rumor = False
-    # ____________________________ END: rumor experiment _____________________________________________________________
+    highest_election_value = -1
+
+    election_handled = False
+
+    count_acc = 0
+
+    def init_election(self):
+        self.possible_coordinator = random.randint(0, 1)
+        print "\nelection value: " + str(self.possible_coordinator)
+        if self.possible_coordinator == 1:
+            self.send_to_neighbours("vote_coord", self.id)
+
+    def handle_election(self, vote_id):
+        if self.highest_election_value == vote_id:
+            self.count_acc += 1
+        if self.count_acc >= len(self.neighborNodes):
+            if self.id == self.highest_election_value:
+                print "\n\nI'm the Coordinator\n\n"
+                self.is_coordinator = True
+                self.start_philosopher_exp()
+        if self.highest_election_value < vote_id:
+            self.count_acc = 0
+            self.highest_election_value = vote_id
+            self.election_handled = False
+        if not self.election_handled:
+            self.election_handled = True
+            self.send_to_neighbours("vote_coord", self.highest_election_value)
+    # ____________________________ END: Election  ____________________________________________________________________
+
+    # ____________________________ END: Distributed Consensus ________________________________________________________
 
     # ____________________________ BEGIN: get and set Node IDs, IPs & Ports __________________________________________
     @staticmethod
@@ -274,19 +277,11 @@ class Node:
             new_neighbour = str(json_msg["payload"]).split(",")
             self.neighborNodes.append((new_neighbour[0], new_neighbour[1], new_neighbour[2]))
 
-        # Rumor-Experiment-Msg
-        elif command == "startRumor":
-            # Start Rumor Experiment
-            self.initiate_rumor_experiment(json_msg["payload"])
-        elif command == "spreadRumor":
-            # hear Rumor
-            self.hear_rumor(json_msg["sID"], json_msg["payload"])
-        elif command == "getRumorStat":
-            # send Rumor Experiment Status
-            self.rumor_status_feedback()
-        elif command == "resetRumorExperiment":
-            # reset Rumor Experiment
-            self.reset_rumor_experiment()
+        # Distributed Consensus
+        elif command == "start_exp":
+            self.init_election()
+        elif command == "vote_coord":
+            self.handle_election(json_msg["payload"])
         # Other-Msg
         elif command == "msg":
             return

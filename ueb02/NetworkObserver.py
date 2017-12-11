@@ -168,11 +168,7 @@ class NetworkObserver:
               "Initiate Network by Graph:   5" + "\n" + \
               "Get Network-Graph:           6" + "\n\n" + \
               "______ Rumor Experiment ______" + "\n" + \
-              "Set Node as Initiator:       7" + "\n" + \
-              "Unset Node as Initiator:     8" + "\n" + \
-              "Start Rumor Experiment:      9" + "\n" + \
-              "Rumor Experiment Status:    10" + "\n" + \
-              "reset Rumor Experiment:     11" + "\n" + \
+              "Start Philosophs:            7" + "\n" + \
               ""
 
     def run(self):
@@ -202,36 +198,9 @@ class NetworkObserver:
                 self.graph_list = []
                 self.request_network_graph()
 
-            # Rumor Experiment
+            # Distributed Consensus
             elif input_str == "7":
-                node_id = raw_input("Node ID: ")
-                node_to_set_initiator = self.get_node_by_id(node_id)
-                if node_to_set_initiator == "-1":
-                    print "Could not find Node by this ID"
-                else:
-                    self.send_msg(node_to_set_initiator[1], node_to_set_initiator[2], "setInit", "")
-            elif input_str == "8":
-                node_id = raw_input("Node ID: ")
-                node_to_unset_initiator = self.get_node_by_id(node_id)
-                if node_to_unset_initiator == "-1":
-                    print "Could not find Node by this ID"
-                else:
-                    self.send_msg(node_to_unset_initiator[1], node_to_unset_initiator[2], "rmInit", "")
-            elif input_str == "9":
-                c_value = raw_input("c: ")
-                try:
-                    int(c_value)
-                    is_int = True
-                except ValueError:
-                    is_int = False
-                if is_int:
-                    self.send_msg_to_all("startRumor", c_value)
-                else:
-                    print "c not a valid int"
-            elif input_str == "10":
-                self.send_msg_to_all("getRumorStat", "")
-            elif input_str == "11":
-                self.send_msg_to_all("resetRumorExperiment", "")
+                self.send_msg_to_all("start_exp", "")
             else:
                 print "\nNo such command\n\n"
     # ____________________________ END: RUN &  MSG-Handling __________________________________________________________
