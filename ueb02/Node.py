@@ -51,7 +51,7 @@ class Node:
 
     # ____________________________ BEGIN: Distributed Consensus ______________________________________________________
     def start_philosopher_exp(self):
-        pass
+        print self.onlineNodes
     # ____________________________ END: Distributed Consensus ________________________________________________________
 
     # ____________________________ BEGIN: Election ___________________________________________________________________
@@ -79,9 +79,10 @@ class Node:
             if self.id == self.highest_election_value:
                 print "\n\nI'm the Coordinator\n\n"
                 self.is_coordinator = True
+                self.get_online_nodes()
                 self.start_philosopher_exp()
         if self.highest_election_value < vote_id:
-            self.count_acc = 0
+            self.count_acc = 1
             self.highest_election_value = vote_id
             self.election_handled = False
         if not self.election_handled:
@@ -127,6 +128,23 @@ class Node:
         found_params = self.get_params(self.id)
         self.ip = found_params[1]
         self.port = found_params[2]
+
+    def get_online_nodes(self):
+        config_file = open('config', 'r')
+        current_entry = config_file.readline()
+
+        while current_entry != "":
+
+            blank_pos = string.find(current_entry, " ")
+            colon_pos = string.find(current_entry, ":")
+
+            ce_id = current_entry[0:blank_pos]
+            ce_ip = current_entry[blank_pos + 1:colon_pos]
+            ce_port = current_entry[colon_pos + 1:len(current_entry) - 1]
+
+            if ce_id != "" and ce_id != self.id:
+                self.onlineNodes.append((ce_id, ce_ip, ce_port))
+            current_entry = config_file.readline()
     # ____________________________ END: get and set Node IDs, IPs & Ports ____________________________________________
 
     # ____________________________ BEGIN: Network-Generation _________________________________________________________
