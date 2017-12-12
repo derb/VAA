@@ -57,37 +57,53 @@ class Node:
     # ____________________________ BEGIN: Election ___________________________________________________________________
     is_coordinator = False
 
-    possible_coordinator = -1
-    election_value = -1
-
-    highest_election_value = -1
-
     election_handled = False
 
-    count_acc = 0
+    will_be_coordinator = -1
+
+    election_value = -1
+    heard_first_election = -1
+
+    election_msg_counter = 0
+
+    election_echo_count = 0
 
     def init_election(self):
-        self.possible_coordinator = random.randint(0, 1)
-        print "\nelection value: " + str(self.possible_coordinator)
-        if self.possible_coordinator == 1:
-            self.send_to_neighbours("vote_coord", self.id)
+        self.will_be_coordinator = random.randint(0, 1)
+        print "\nelection value: " + str(self.will_be_coordinator)
+        if self.will_be_coordinator == 1:
+            self.election_handled = True
+            self.election_value = self.id
+            self.send_to_neighbours("expend_election", self.id)
 
-    def handle_election(self, vote_id):
-        if self.highest_election_value == vote_id:
-            self.count_acc += 1
-        if self.count_acc >= len(self.neighborNodes):
-            if self.id == self.highest_election_value:
-                print "\n\nI'm the Coordinator\n\n"
-                self.is_coordinator = True
-                self.get_online_nodes()
-                self.start_philosopher_exp()
-        if self.highest_election_value < vote_id:
-            self.count_acc = 1
-            self.highest_election_value = vote_id
+    def expend_election(self, value, sender_id):
+        if self.election_value < value:
+            self.election_value = value
+            self.election_msg_counter = 1
             self.election_handled = False
+            self.heard_first_election = sender_id
+        elif self.election_value == value:
+            self.election_msg_counter += 1
+
+        if self.election_msg_counter >= len(self.neighborNodes):
+            self.send_msg_by_id(self.heard_first_election, "election_echo", self.election_value)
+
         if not self.election_handled:
             self.election_handled = True
-            self.send_to_neighbours("vote_coord", self.highest_election_value)
+            for i in range(len(self.neighborNodes)):
+                current_node = self.neighborNodes[i]
+                if current_node[0] != self.heard_first_election:
+                    self.send_msg(current_node[1], current_node[2], "election_echo", self.election_value)
+
+    def echo_election(self, value, sender_id):
+        if value == self.election_value:
+            self.election_value += 1
+            self.election_echo_count += 1
+            if self.election_msg_counter == len(self.neighborNodes):
+                self.send_msg_by_id(self.heard_first_election, "election_echo", self.election_value)
+
+            if self.election_echo_count == len(self.neighborNodes) and value == self.id:
+                print "I am Coordinator"
     # ____________________________ END: Election  ____________________________________________________________________
 
     # ____________________________ END: Distributed Consensus ________________________________________________________
@@ -231,6 +247,12 @@ class Node:
         for i in range(len(self.neighborNodes)):
             current_neighbour = self.neighborNodes[i]
             self.send_msg(current_neighbour[1], current_neighbour[2], cmd, payload)
+
+    def send_msg_by_id(self, receiver_id, cmd, payload):
+        for i in range(len(self.neighborNodes)):
+            current_neighbour = self.neighborNodes[i]
+            if current_neighbour[0] == int(receiver_id):
+                self.send_msg(current_neighbour[1], current_neighbour[2], cmd, payload)
     # ____________________________ END: Send-Functions _______________________________________________________________
 
     # ____________________________ BEGIN: Message-Handling ___________________________________________________________
@@ -298,8 +320,10 @@ class Node:
         # Distributed Consensus
         elif command == "start_exp":
             self.init_election()
-        elif command == "vote_coord":
-            self.handle_election(json_msg["payload"])
+        elif command == "expend_election":
+            self.expend_election(json_msg["payload"], json_msg["sID"])
+        elif command == "election_echo":
+            self.echo_election(json_msg["payload"], json_msg["sID"])
         # Other-Msg
         elif command == "msg":
             return
