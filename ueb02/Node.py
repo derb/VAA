@@ -85,24 +85,25 @@ class Node:
         elif self.election_value == value:
             self.election_msg_counter += 1
 
-        if self.election_msg_counter >= len(self.neighborNodes):
-            self.send_msg_by_id(self.heard_first_election, "election_echo", self.election_value)
+            if self.election_msg_counter >= len(self.neighborNodes):
+                self.send_msg_by_id(self.heard_first_election, "election_echo", self.election_value)
 
         if not self.election_handled:
             self.election_handled = True
             for i in range(len(self.neighborNodes)):
                 current_node = self.neighborNodes[i]
                 if current_node[0] != self.heard_first_election:
-                    self.send_msg(current_node[1], current_node[2], "election_echo", self.election_value)
+                    self.send_msg(current_node[1], current_node[2], "expend_election", self.election_value)
 
     def echo_election(self, value, sender_id):
         if value == self.election_value:
-            self.election_value += 1
+            self.election_msg_counter += 1
             self.election_echo_count += 1
-            if self.election_msg_counter == len(self.neighborNodes):
+            if self.election_msg_counter >= len(self.neighborNodes):
                 self.send_msg_by_id(self.heard_first_election, "election_echo", self.election_value)
 
             if self.election_echo_count == len(self.neighborNodes) and value == self.id:
+                self.is_coordinator = True
                 print "I am Coordinator"
     # ____________________________ END: Election  ____________________________________________________________________
 
@@ -251,7 +252,7 @@ class Node:
     def send_msg_by_id(self, receiver_id, cmd, payload):
         for i in range(len(self.neighborNodes)):
             current_neighbour = self.neighborNodes[i]
-            if current_neighbour[0] == int(receiver_id):
+            if current_neighbour[0] == receiver_id:
                 self.send_msg(current_neighbour[1], current_neighbour[2], cmd, payload)
     # ____________________________ END: Send-Functions _______________________________________________________________
 
@@ -319,6 +320,14 @@ class Node:
 
         # Distributed Consensus
         elif command == "start_exp":
+            self.is_coordinator = False
+            self.election_handled = False
+            self.will_be_coordinator = -1
+            self.election_value = -1
+            self.heard_first_election = -1
+            self.election_msg_counter = 0
+            self.election_echo_count = 0
+
             self.init_election()
         elif command == "expend_election":
             self.expend_election(json_msg["payload"], json_msg["sID"])
@@ -353,7 +362,7 @@ def main(argv):
         node.run()
     except Exception as e:
         logging.basicConfig(filename='node.log', level=logging.DEBUG)
-        logging.critical(str(type(e)) + " : " + str(e.args))
+        logging.critical(str(type(e)) + " : " + str(e.args), exc_info=True)
         sys.exit(2)
 
 
