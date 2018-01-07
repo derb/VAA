@@ -5,7 +5,6 @@ import socket
 import logging
 import json
 import time
-import math
 
 
 class Node:
@@ -69,14 +68,7 @@ class Node:
 
     election_echo_count = 0
 
-    time = 0
-
-    s_value = 0
-    p_value = 0
-    a_max = 0
-
-    def init_election(self, m):
-        self.time = random.randint(1, m)
+    def init_election(self):
         self.will_be_coordinator = random.randint(0, 1)
         print "\nelection value: " + str(self.will_be_coordinator)
         if self.will_be_coordinator == 1:
@@ -113,18 +105,6 @@ class Node:
             if self.election_echo_count == len(self.neighborNodes) and value == self.id:
                 self.is_coordinator = True
                 print "I am Coordinator"
-                self.get_online_nodes()
-                self.init_time_finding()
-
-    def init_time_finding(self):
-        if self.s_value > len(self.onlineNodes):
-            self.s_value = len(self.onlineNodes)
-        s_list = random.sample(self.onlineNodes, self.s_value)
-        print s_list
-
-    @staticmethod
-    def get_new_time(m_time, s_time):
-        return math.ceil(m_time / (s_time * 1.0))
     # ____________________________ END: Election  ____________________________________________________________________
 
     # ____________________________ END: Distributed Consensus ________________________________________________________
@@ -348,18 +328,7 @@ class Node:
             self.election_msg_counter = 0
             self.election_echo_count = 0
 
-            pl = json.loads(json_msg["payload"])
-            m = int(pl["m"])
-            self.s_value = int(pl["s"])
-            p = int(pl["p"])
-            if p > len(self.neighborNodes):
-                self.p_value = len(self.neighborNodes)
-            else:
-                self.p_value = p
-
-            self.a_max = int(pl["a_max"])
-
-            self.init_election(m)
+            self.init_election()
         elif command == "expend_election":
             self.expend_election(json_msg["payload"], json_msg["sID"])
         elif command == "election_echo":

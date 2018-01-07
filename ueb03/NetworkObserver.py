@@ -200,14 +200,7 @@ class NetworkObserver:
 
             # Distributed Consensus
             elif input_str == "7":
-                m = raw_input("m: ")
-                s = raw_input("s: ")
-                p = raw_input("p: ")
-                a_max = raw_input("A_max: ")
-
-                pl = json.dumps({'m': m, 's': s, 'p': p, 'a_max': a_max})
-
-                self.send_msg_to_all("start_exp", pl)
+                self.send_msg_to_all("start_exp", "")
             else:
                 print "\nNo such command\n\n"
     # ____________________________ END: RUN &  MSG-Handling __________________________________________________________
