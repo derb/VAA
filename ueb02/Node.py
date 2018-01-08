@@ -6,6 +6,7 @@ import logging
 import json
 import time
 import math
+from multiprocessing import Process
 
 
 class Node:
@@ -36,25 +37,6 @@ class Node:
         self.listen_socket.close()
     # ____________________________ END: init & del ___________________________________________________________________
 
-    # ____________________________ BEGIN: Echo _______________________________________________________________________
-    first_echo = -1
-    echo_heard = 0
-
-    def send_echo_msg(self):
-        pass
-
-    def answer_echo(self):
-        pass
-
-    def handle_echo_msg(self):
-        pass
-    # ____________________________ END: Echo _________________________________________________________________________
-
-    # ____________________________ BEGIN: Distributed Consensus ______________________________________________________
-    def start_philosopher_exp(self):
-        print self.onlineNodes
-    # ____________________________ END: Distributed Consensus ________________________________________________________
-
     # ____________________________ BEGIN: Election ___________________________________________________________________
     log_name = ""
 
@@ -65,22 +47,6 @@ class Node:
     heard_first_election = -1
     election_msg_counter = 0
     election_echo_count = 0
-
-    time = 0
-
-    s_value = 0
-    p_value = 0
-    a_max = 0
-
-    is_elector = False
-    rounds = 1
-    p_list = []
-    value_changed = False
-    current_p_index = 0
-    round_up = False
-
-    msg_snd_count = 0
-    msg_rec_count = 0
 
     def init_election(self, m):
         self.time = random.randint(1, m)
@@ -122,6 +88,27 @@ class Node:
                 print "I am Coordinator"
                 self.get_online_nodes()
                 self.init_time_finding()
+                dc = Process(target=self.double_counting_handler)
+                dc.start()
+
+    # ____________________________ END: Election  ____________________________________________________________________
+
+    # ____________________________ BEGIN: Distributed Consensus ______________________________________________________
+    time = 0
+
+    s_value = 0
+    p_value = 0
+    a_max = 0
+
+    is_elector = False
+    rounds = 1
+    p_list = []
+    value_changed = False
+    current_p_index = 0
+    round_up = False
+
+    msg_snd_count = 0
+    msg_rec_count = 0
 
     def init_time_finding(self):
         if self.s_value > len(self.onlineNodes):
@@ -184,9 +171,58 @@ class Node:
     @staticmethod
     def get_new_time(m_time, s_time):
         return int(math.ceil(m_time / (s_time * 1.0)))
-    # ____________________________ END: Election  ____________________________________________________________________
 
     # ____________________________ END: Distributed Consensus ________________________________________________________
+
+    # ____________________________ BEGIN: Double Counting  ___________________________________________________________
+    network_finished = False
+    all_received = False
+    current_nw_snd = 0
+    current_nw_rec = 0
+    old_nw_snd = 0
+    old_nw_rec = 0
+    feedback_counter = 0
+
+    def double_counting_handler(self):
+        print self.onlineNodes
+        time.sleep(3)
+        for i in range(len(self.onlineNodes)):
+            self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "dc", "")
+        while not self.network_finished:
+            if self.all_received:
+                self.current_nw_snd += self.msg_snd_count
+                self.current_nw_rec += self.msg_rec_count
+                if self.current_nw_snd == self.old_nw_snd and self.current_nw_rec == self.old_nw_rec:
+                    if self.current_nw_snd == self.current_nw_rec:
+                        self.network_finished = True
+                        print "Network finished"
+                    else:
+                        print "???"
+                else:
+                    self.old_nw_snd = self.current_nw_snd
+                    self.old_nw_rec = self.current_nw_rec
+                    self.current_nw_snd = 0
+                    self.current_nw_rec = 0
+                    self.all_received = False
+                    self.feedback_counter = 0
+                    time.sleep(0.5)
+                    for i in range(len(self.onlineNodes)):
+                        self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "dc", "")
+        # hier jump
+
+    def double_counting_feedback_handler(self, msg_rec, msg_snd):
+        self.current_nw_snd += msg_snd
+        self.current_nw_rec += msg_rec
+        self.feedback_counter += 1
+        print str(self.feedback_counter)
+        if self.feedback_counter == len(self.onlineNodes):
+            self.all_received = True
+
+    def double_counting_acc(self, s_id):
+        pl = json.dumps({'msg_rec': self.msg_rec_count, 'msg_snd': self.msg_snd_count})
+        self.send_msg_by_uid(s_id, "dc_acc", pl)
+
+    # ____________________________ END: Double Counting  _____________________________________________________________
 
     # ____________________________ BEGIN: get and set Node IDs, IPs & Ports __________________________________________
     @staticmethod
@@ -333,6 +369,10 @@ class Node:
             current_neighbour = self.neighborNodes[i]
             if current_neighbour[0] == receiver_id:
                 self.send_msg(current_neighbour[1], current_neighbour[2], cmd, payload)
+
+    def send_msg_by_uid(self, receiver_id, cmd, payload):
+        node = self.get_params(receiver_id)
+        self.send_msg(node[1], node[2], cmd, payload)
     # ____________________________ END: Send-Functions _______________________________________________________________
 
     # ____________________________ BEGIN: Message-Handling ___________________________________________________________
@@ -430,6 +470,13 @@ class Node:
             self.acc_time_finding(int(json_msg["payload"]), json_msg["sID"])
         elif command == "tf_acc":
             self.react_time_finding(int(json_msg["payload"]), json_msg["sID"])
+        elif command == "dc":
+            self.double_counting_acc(json_msg["sID"])
+        elif command == "dc_acc":
+            pl = json.loads(json_msg["payload"])
+            msg_rec = int(pl["msg_rec"])
+            msg_snd = int(pl["msg_snd"])
+            self.double_counting_feedback_handler(msg_rec, msg_snd)
         # Other-Msg
         elif command == "msg":
             return
@@ -458,6 +505,9 @@ def main(argv):
     try:
         node = Node(argv[1])
         node.run()
+#        run = threading.Thread(target=node.run())
+#        run.setDaemon(True)
+#        run.start()
     except Exception as e:
         logging.basicConfig(filename='node.log', level=logging.DEBUG)
         logging.critical(str(type(e)) + " : " + str(e.args), exc_info=True)
