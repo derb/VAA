@@ -6,7 +6,7 @@ import logging
 import json
 import time
 import math
-from multiprocessing import Process
+from multiprocessing import Process, Value
 
 
 class Node:
@@ -39,6 +39,8 @@ class Node:
 
     # ____________________________ BEGIN: Election ___________________________________________________________________
     log_name = ""
+
+    dc = Process
 
     is_coordinator = False
     election_handled = False
@@ -88,8 +90,8 @@ class Node:
                 print "I am Coordinator"
                 self.get_online_nodes()
                 self.init_time_finding()
-                dc = Process(target=self.double_counting_handler)
-                dc.start()
+                self.dc = Process(target=self.double_counting_handler)
+                self.dc.start()
 
     # ____________________________ END: Election  ____________________________________________________________________
 
@@ -184,39 +186,32 @@ class Node:
     feedback_counter = 0
 
     def double_counting_handler(self):
-        print self.onlineNodes
-        time.sleep(3)
-        for i in range(len(self.onlineNodes)):
-            self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "dc", "")
-        while not self.network_finished:
-            if self.all_received:
-                self.current_nw_snd += self.msg_snd_count
-                self.current_nw_rec += self.msg_rec_count
-                if self.current_nw_snd == self.old_nw_snd and self.current_nw_rec == self.old_nw_rec:
-                    if self.current_nw_snd == self.current_nw_rec:
-                        self.network_finished = True
-                        print "Network finished"
-                    else:
-                        print "???"
-                else:
-                    self.old_nw_snd = self.current_nw_snd
-                    self.old_nw_rec = self.current_nw_rec
-                    self.current_nw_snd = 0
-                    self.current_nw_rec = 0
-                    self.all_received = False
-                    self.feedback_counter = 0
-                    time.sleep(0.5)
-                    for i in range(len(self.onlineNodes)):
-                        self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "dc", "")
-        # hier jump
+        while True:
+            time.sleep(3)
+            for i in range(len(self.onlineNodes)):
+                self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "dc", "")
 
     def double_counting_feedback_handler(self, msg_rec, msg_snd):
         self.current_nw_snd += msg_snd
         self.current_nw_rec += msg_rec
         self.feedback_counter += 1
-        print str(self.feedback_counter)
         if self.feedback_counter == len(self.onlineNodes):
-            self.all_received = True
+            self.current_nw_snd += self.msg_snd_count
+            self.current_nw_rec += self.msg_rec_count
+            if self.current_nw_snd == self.old_nw_snd and self.current_nw_rec == self.old_nw_rec:
+                if self.current_nw_snd == self.current_nw_rec:
+                    self.network_finished = True
+                    print "Network finished"
+                    self.dc.terminate()
+                else:
+                    print "Error occurred"
+            else:
+                self.old_nw_snd = self.current_nw_snd
+                self.old_nw_rec = self.current_nw_rec
+                self.current_nw_snd = 0
+                self.current_nw_rec = 0
+                self.all_received = False
+                self.feedback_counter = 0
 
     def double_counting_acc(self, s_id):
         pl = json.dumps({'msg_rec': self.msg_rec_count, 'msg_snd': self.msg_snd_count})
