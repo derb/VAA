@@ -6,7 +6,7 @@ import logging
 import json
 import time
 import math
-from multiprocessing import Process, Value
+from multiprocessing import Process
 
 
 class Node:
@@ -129,27 +129,33 @@ class Node:
     def send_time_finding(self):
         if self.rounds > self.a_max:
             return
-        if self.current_p_index == len(self.p_list):
-            self.round_up = True
-            self.current_p_index = 0
         index = self.current_p_index
         self.msg_snd_count += 1
         logging.basicConfig(filename=self.log_name, level=logging.DEBUG)
         logging.info("Send_MSG to: " + str(self.p_list[index][0]) + "  msg: tf; " + str(self.time) +
                      "  msg_snd_count : " + str(self.msg_snd_count) + "  msg_rec_count : " + str(self.msg_rec_count) +
                      "  round: " + str(self.rounds))
+        time.sleep(0.1)
         self.send_msg(self.p_list[index][1], self.p_list[index][2], "tf", self.time)
         self.current_p_index += 1
+        if self.current_p_index == len(self.p_list):
+            self.round_up = True
+            self.current_p_index = 0
 
     def react_time_finding(self, new_time, sender_id):
         self.msg_rec_count += 1
-        if self.time == new_time:
+        if not self.time == new_time:
             self.value_changed = True
             self.time = new_time
-        if self.round_up:
+        if self.round_up and self.value_changed:
             self.round_up = False
             self.value_changed = False
             self.rounds += 1
+        if self.round_up and not self.value_changed:
+            self.round_up = False
+            self.value_changed = False
+            self.rounds += 1
+            return
         logging.basicConfig(filename=self.log_name, level=logging.DEBUG)
         logging.info("Rec_MSG from: " + str(sender_id) + "  msg: tf_acc; " + str(new_time) +
                      "  msg_snd_count : " + str(self.msg_snd_count) + "  msg_rec_count : " + str(self.msg_rec_count) +
@@ -162,7 +168,9 @@ class Node:
                      "  msg_snd_count : " + str(self.msg_snd_count) + "  msg_rec_count : " + str(self.msg_rec_count) +
                      "  round: " + str(self.rounds))
         self.msg_rec_count += 1
+        print "self.time: " + str(self.time) + "  new.time: " + str(new_time)
         f_time = self.get_new_time(self.time, new_time)
+        print "f_time: " + str(f_time)
         self.time = f_time
         self.msg_snd_count += 1
         logging.info("Send_MSG to: " + str(sender_id) + "  msg: tf_acc; " + str(f_time) +
@@ -172,7 +180,7 @@ class Node:
 
     @staticmethod
     def get_new_time(m_time, s_time):
-        return int(math.ceil(m_time / (s_time * 1.0)))
+        return int(math.ceil((m_time + s_time) / 2.0))
 
     # ____________________________ END: Distributed Consensus ________________________________________________________
 
@@ -203,6 +211,7 @@ class Node:
                     self.network_finished = True
                     print "Network finished"
                     self.dc.terminate()
+                    self.init_collect_time()
                 else:
                     print "Error occurred"
             else:
@@ -217,7 +226,69 @@ class Node:
         pl = json.dumps({'msg_rec': self.msg_rec_count, 'msg_snd': self.msg_snd_count})
         self.send_msg_by_uid(s_id, "dc_acc", pl)
 
-    # ____________________________ END: Double Counting  _____________________________________________________________
+    # ____________________________ END: Double Counting ______________________________________________________________
+
+    # ____________________________ BEGIN: Time Echo __________________________________________________________________
+
+    first_time_coll_id = -1
+    time_coll_heard = 0
+    time_coll_echo_heard = 0
+    time_send = False
+    echo_send = False
+
+    collected_times = []
+    final_time = -1
+
+    def init_collect_time(self):
+        self.send_to_neighbours("time_coll", "")
+
+    def collect_time(self, sender_id):
+        self.time_coll_heard += 1
+        if self.first_time_coll_id == -1:
+            self.first_time_coll_id = sender_id
+        if self.time_coll_heard < len(self.neighborNodes) and not self.time_send:
+            for i in range(len(self.neighborNodes)):
+                node = self.neighborNodes[i]
+                if not node[0] == self.first_time_coll_id:
+                    self.time_send = True
+                    self.send_msg(node[1], node[2], "time_coll", "")
+        ref_val = self.time_coll_heard + self.time_coll_echo_heard
+        if ref_val >= len(self.neighborNodes) and not self.echo_send:
+            self.echo_send = True
+            self.send_msg_by_id(self.first_time_coll_id, "time_coll_echo", self.time)
+
+    def echo_collect_time(self, rec_time):
+        if self.first_time_coll_id == -1:
+            self.collected_times.append(rec_time)
+        self.time_coll_echo_heard += 1
+        ref_val = self.time_coll_heard + self.time_coll_echo_heard
+        if ref_val >= len(self.neighborNodes) and not self.first_time_coll_id == -1 and not self.echo_send:
+            self.echo_send = True
+            if rec_time == self.time:
+                self.send_msg_by_id(self.first_time_coll_id, "time_coll_echo", self.time)
+            else:
+                self.send_msg_by_id(self.first_time_coll_id, "time_coll_echo", "-1")
+        elif ref_val >= len(self.neighborNodes) and self.first_time_coll_id == -1:
+            self.eval_time()
+
+    # ____________________________ END: Time Echo ____________________________________________________________________
+
+    # ____________________________ BEGIN: Time Eval __________________________________________________________________
+
+    def eval_time(self):
+        time_found = True
+        for i in range(len(self.collected_times) - 1):
+            if time_found:
+                if self.collected_times[i] == self.collected_times[i + 1]:
+                    time_found = True
+                else:
+                    time_found = False
+        if time_found:
+            self.final_time = self.collected_times[0]
+            print "Time found: " + str(self.final_time)
+        else:
+            print "No Time found"
+    # ____________________________ END: Time Eval ____________________________________________________________________
 
     # ____________________________ BEGIN: get and set Node IDs, IPs & Ports __________________________________________
     @staticmethod
@@ -472,6 +543,11 @@ class Node:
             msg_rec = int(pl["msg_rec"])
             msg_snd = int(pl["msg_snd"])
             self.double_counting_feedback_handler(msg_rec, msg_snd)
+
+        elif command == "time_coll":
+            self.collect_time(json_msg["sID"])
+        elif command == "time_coll_echo":
+            self.echo_collect_time(int(json_msg["payload"]))
         # Other-Msg
         elif command == "msg":
             return
@@ -500,9 +576,6 @@ def main(argv):
     try:
         node = Node(argv[1])
         node.run()
-#        run = threading.Thread(target=node.run())
-#        run.setDaemon(True)
-#        run.start()
     except Exception as e:
         logging.basicConfig(filename='node.log', level=logging.DEBUG)
         logging.critical(str(type(e)) + " : " + str(e.args), exc_info=True)
