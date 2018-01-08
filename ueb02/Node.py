@@ -56,17 +56,14 @@ class Node:
     # ____________________________ END: Distributed Consensus ________________________________________________________
 
     # ____________________________ BEGIN: Election ___________________________________________________________________
+    log_name = ""
+
     is_coordinator = False
-
     election_handled = False
-
     will_be_coordinator = -1
-
     election_value = -1
     heard_first_election = -1
-
     election_msg_counter = 0
-
     election_echo_count = 0
 
     time = 0
@@ -76,16 +73,14 @@ class Node:
     a_max = 0
 
     is_elector = False
-
     rounds = 1
-
     p_list = []
-
     value_changed = False
-
     current_p_index = 0
-
     round_up = False
+
+    msg_snd_count = 0
+    msg_rec_count = 0
 
     def init_election(self, m):
         self.time = random.randint(1, m)
@@ -149,10 +144,16 @@ class Node:
             self.round_up = True
             self.current_p_index = 0
         index = self.current_p_index
+        self.msg_snd_count += 1
+        logging.basicConfig(filename=self.log_name, level=logging.DEBUG)
+        logging.info("Send_MSG to: " + str(self.p_list[index][0]) + "  msg: tf; " + str(self.time) +
+                     "  msg_snd_count : " + str(self.msg_snd_count) + "  msg_rec_count : " + str(self.msg_rec_count) +
+                     "  round: " + str(self.rounds))
         self.send_msg(self.p_list[index][1], self.p_list[index][2], "tf", self.time)
         self.current_p_index += 1
 
-    def react_time_finding(self, new_time):
+    def react_time_finding(self, new_time, sender_id):
+        self.msg_rec_count += 1
         if self.time == new_time:
             self.value_changed = True
             self.time = new_time
@@ -160,11 +161,24 @@ class Node:
             self.round_up = False
             self.value_changed = False
             self.rounds += 1
+        logging.basicConfig(filename=self.log_name, level=logging.DEBUG)
+        logging.info("Rec_MSG from: " + str(sender_id) + "  msg: tf_acc; " + str(new_time) +
+                     "  msg_snd_count : " + str(self.msg_snd_count) + "  msg_rec_count : " + str(self.msg_rec_count) +
+                     "  round: " + str(self.rounds))
         self.send_time_finding()
 
     def acc_time_finding(self, new_time, sender_id):
+        logging.basicConfig(filename=self.log_name, level=logging.DEBUG)
+        logging.info("Rec_MSG from: " + str(sender_id) + "  msg: tf; " + str(new_time) +
+                     "  msg_snd_count : " + str(self.msg_snd_count) + "  msg_rec_count : " + str(self.msg_rec_count) +
+                     "  round: " + str(self.rounds))
+        self.msg_rec_count += 1
         f_time = self.get_new_time(self.time, new_time)
         self.time = f_time
+        self.msg_snd_count += 1
+        logging.info("Send_MSG to: " + str(sender_id) + "  msg: tf_acc; " + str(f_time) +
+                     "  msg_snd_count : " + str(self.msg_snd_count) + "  msg_rec_count : " + str(self.msg_rec_count) +
+                     "  round: " + str(self.rounds))
         self.send_msg_by_id(sender_id, "tf_acc", f_time)
 
     @staticmethod
@@ -415,7 +429,7 @@ class Node:
         elif command == "tf":
             self.acc_time_finding(int(json_msg["payload"]), json_msg["sID"])
         elif command == "tf_acc":
-            self.react_time_finding(int(json_msg["payload"]))
+            self.react_time_finding(int(json_msg["payload"]), json_msg["sID"])
         # Other-Msg
         elif command == "msg":
             return
@@ -427,6 +441,7 @@ class Node:
         sys.exit(0)
 
     def run(self):
+        self.log_name = "protocol/node_" + str(self.id)
         self.listen_socket.bind((self.ip, int(self.port)))
         print "Node: " + str(self.id) + " listens on Socket: " + str(self.port)
         while True:
