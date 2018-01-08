@@ -75,6 +75,18 @@ class Node:
     p_value = 0
     a_max = 0
 
+    is_elector = False
+
+    rounds = 1
+
+    p_list = []
+
+    value_changed = False
+
+    current_p_index = 0
+
+    round_up = False
+
     def init_election(self, m):
         self.time = random.randint(1, m)
         self.will_be_coordinator = random.randint(0, 1)
@@ -121,10 +133,43 @@ class Node:
             self.s_value = len(self.onlineNodes)
         s_list = random.sample(self.onlineNodes, self.s_value)
         print s_list
+        for i in range(len(s_list)):
+            self.send_msg(s_list[i][1], s_list[i][2], "start_tf", "")
+
+    def start_time_finding(self):
+        self.is_elector = True
+        self.p_list = random.sample(self.neighborNodes, self.p_value)
+        print self.p_list
+        self.send_time_finding()
+
+    def send_time_finding(self):
+        if self.rounds > self.a_max:
+            return
+        if self.current_p_index == len(self.p_list):
+            self.round_up = True
+            self.current_p_index = 0
+        index = self.current_p_index
+        self.send_msg(self.p_list[index][1], self.p_list[index][2], "tf", self.time)
+        self.current_p_index += 1
+
+    def react_time_finding(self, new_time):
+        if self.time == new_time:
+            self.value_changed = True
+            self.time = new_time
+        if self.round_up:
+            self.round_up = False
+            self.value_changed = False
+            self.rounds += 1
+        self.send_time_finding()
+
+    def acc_time_finding(self, new_time, sender_id):
+        f_time = self.get_new_time(self.time, new_time)
+        self.time = f_time
+        self.send_msg_by_id(sender_id, "tf_acc", f_time)
 
     @staticmethod
     def get_new_time(m_time, s_time):
-        return math.ceil(m_time / (s_time * 1.0))
+        return int(math.ceil(m_time / (s_time * 1.0)))
     # ____________________________ END: Election  ____________________________________________________________________
 
     # ____________________________ END: Distributed Consensus ________________________________________________________
@@ -364,6 +409,13 @@ class Node:
             self.expend_election(json_msg["payload"], json_msg["sID"])
         elif command == "election_echo":
             self.echo_election(json_msg["payload"], json_msg["sID"])
+
+        elif command == "start_tf":
+            self.start_time_finding()
+        elif command == "tf":
+            self.acc_time_finding(int(json_msg["payload"]), json_msg["sID"])
+        elif command == "tf_acc":
+            self.react_time_finding(int(json_msg["payload"]))
         # Other-Msg
         elif command == "msg":
             return
