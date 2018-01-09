@@ -78,7 +78,7 @@ class Node:
                 if current_node[0] != self.heard_first_election:
                     self.send_msg(current_node[1], current_node[2], "expend_election", self.election_value)
 
-    def echo_election(self, value, sender_id):
+    def echo_election(self, value):
         if value == self.election_value:
             self.election_msg_counter += 1
             self.election_echo_count += 1
@@ -285,10 +285,64 @@ class Node:
                     time_found = False
         if time_found:
             self.final_time = self.collected_times[0]
-            print "Time found: " + str(self.final_time)
+            time_msg = "Time found: " + str(self.final_time)
         else:
-            print "No Time found"
+            time_msg = "No Time found"
+        print time_msg
+        self.propagate_time(time_msg)
+
+    def propagate_time(self, msg):
+        for i in range(len(self.onlineNodes)):
+            node = self.onlineNodes[i]
+            self.send_msg(node[1], node[2], "prop_time", msg)
+
+    @staticmethod
+    def receive_time(time_msg):
+        print time_msg
     # ____________________________ END: Time Eval ____________________________________________________________________
+
+    # ____________________________ BEGIN: Reset Philosopher Experiment _______________________________________________
+
+    def reset_philosopher_exp(self):
+        self.onlineNodes = []
+
+        self.is_coordinator = False
+        self.election_handled = False
+        self.will_be_coordinator = -1
+        self.election_value = -1
+        self.heard_first_election = -1
+        self.election_msg_counter = 0
+        self.election_echo_count = 0
+
+        self.time = 0
+        self.s_value = 0
+        self.p_value = 0
+        self.a_max = 0
+        self.is_elector = False
+        self.rounds = 1
+        self.p_list = []
+        self.value_changed = False
+        self.current_p_index = 0
+        self.round_up = False
+        self.msg_snd_count = 0
+        self.msg_rec_count = 0
+
+        self.network_finished = False
+        self.all_received = False
+        self.current_nw_snd = 0
+        self.current_nw_rec = 0
+        self.old_nw_snd = 0
+        self.old_nw_rec = 0
+        self.feedback_counter = 0
+
+        self.first_time_coll_id = -1
+        self.time_coll_heard = 0
+        self.time_coll_echo_heard = 0
+        self.time_send = False
+        self.echo_send = False
+        self.collected_times = []
+        self.final_time = -1
+    # ____________________________ END: Reset Philosopher Experiment _________________________________________________
 
     # ____________________________ BEGIN: get and set Node IDs, IPs & Ports __________________________________________
     @staticmethod
@@ -528,7 +582,7 @@ class Node:
         elif command == "expend_election":
             self.expend_election(json_msg["payload"], json_msg["sID"])
         elif command == "election_echo":
-            self.echo_election(json_msg["payload"], json_msg["sID"])
+            self.echo_election(json_msg["payload"])
 
         elif command == "start_tf":
             self.start_time_finding()
@@ -548,6 +602,12 @@ class Node:
             self.collect_time(json_msg["sID"])
         elif command == "time_coll_echo":
             self.echo_collect_time(int(json_msg["payload"]))
+
+        elif command == "prop_time":
+            self.receive_time(json_msg["payload"])
+
+        elif command == "reset_phil_exp":
+            self.reset_philosopher_exp()
         # Other-Msg
         elif command == "msg":
             return

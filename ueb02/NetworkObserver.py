@@ -167,8 +167,9 @@ class NetworkObserver:
               "Initiate random Network:     4" + "\n" + \
               "Initiate Network by Graph:   5" + "\n" + \
               "Get Network-Graph:           6" + "\n\n" + \
-              "______ Rumor Experiment ______" + "\n" + \
+              "___ Philosopher Experiment ___" + "\n" + \
               "Start Philosophs:            7" + "\n" + \
+              "Reset Philosophs:            8" + "\n" + \
               ""
 
     def run(self):
@@ -208,6 +209,9 @@ class NetworkObserver:
                 pl = json.dumps({'m': m, 's': s, 'p': p, 'a_max': a_max})
 
                 self.send_msg_to_all("start_exp", pl)
+
+            elif input_str == "8":
+                self.send_msg_to_all("reset_phil_exp", "")
             else:
                 print "\nNo such command\n\n"
     # ____________________________ END: RUN &  MSG-Handling __________________________________________________________
