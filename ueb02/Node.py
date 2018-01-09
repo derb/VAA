@@ -52,6 +52,7 @@ class Node:
 
     def init_election(self, m):
         self.time = random.randint(1, m)
+        print "Start-Time: " + str(self.time)
         self.will_be_coordinator = random.randint(0, 1)
         print "\nelection value: " + str(self.will_be_coordinator)
         if self.will_be_coordinator == 1:
