@@ -53,6 +53,8 @@ class Node:
     def init_election(self, m):
         self.time = random.randint(1, m)
         print "Start-Time: " + str(self.time)
+        logging.basicConfig(filename=self.log_name, level=logging.DEBUG)
+        logging.info("Start-Time: " + str(self.time))
         self.will_be_coordinator = random.randint(0, 1)
         print "\nelection value: " + str(self.will_be_coordinator)
         if self.will_be_coordinator == 1:
@@ -68,7 +70,6 @@ class Node:
             self.heard_first_election = sender_id
         elif self.election_value == value:
             self.election_msg_counter += 1
-
             if self.election_msg_counter >= len(self.neighborNodes):
                 self.send_msg_by_id(self.heard_first_election, "election_echo", self.election_value)
 
@@ -259,17 +260,17 @@ class Node:
             self.send_msg_by_id(self.first_time_coll_id, "time_coll_echo", self.time)
 
     def echo_collect_time(self, rec_time):
-        if self.first_time_coll_id == -1:
+        if self.is_coordinator:
             self.collected_times.append(rec_time)
         self.time_coll_echo_heard += 1
         ref_val = self.time_coll_heard + self.time_coll_echo_heard
-        if ref_val >= len(self.neighborNodes) and not self.first_time_coll_id == -1 and not self.echo_send:
+        if ref_val >= len(self.neighborNodes) and not self.echo_send and not self.is_coordinator:
             self.echo_send = True
             if rec_time == self.time:
                 self.send_msg_by_id(self.first_time_coll_id, "time_coll_echo", self.time)
             else:
                 self.send_msg_by_id(self.first_time_coll_id, "time_coll_echo", "-1")
-        elif ref_val >= len(self.neighborNodes) and self.first_time_coll_id == -1:
+        if self.time_coll_echo_heard >= len(self.neighborNodes) and self.is_coordinator:
             self.eval_time()
 
     # ____________________________ END: Time Echo ____________________________________________________________________
@@ -277,18 +278,21 @@ class Node:
     # ____________________________ BEGIN: Time Eval __________________________________________________________________
 
     def eval_time(self):
-        time_found = True
-        for i in range(len(self.collected_times) - 1):
-            if time_found:
-                if self.collected_times[i] == self.collected_times[i + 1]:
-                    time_found = True
-                else:
-                    time_found = False
+        time_found = False
+        time_msg = ""
+        for i in range(len(self.collected_times)):
+            eval_time = self.collected_times[i]
+            if eval_time == self.time:
+                time_found = True
+            else:
+                time_found = False
+
         if time_found:
             self.final_time = self.collected_times[0]
             time_msg = "Time found: " + str(self.final_time)
         else:
             time_msg = "No Time found"
+
         print time_msg
         self.propagate_time(time_msg)
 

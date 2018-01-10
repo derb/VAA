@@ -1,0 +1,11 @@
+INFO:root:Start-Time: 8
+INFO:root:Rec_MSG from: 10  msg: tf; 8  msg_snd_count : 0  msg_rec_count : 0  round: 1
+INFO:root:Send_MSG to: 10  msg: tf_acc; 8  msg_snd_count : 1  msg_rec_count : 1  round: 1
+INFO:root:Rec_MSG from: 10  msg: tf; 10  msg_snd_count : 1  msg_rec_count : 1  round: 1
+INFO:root:Send_MSG to: 10  msg: tf_acc; 9  msg_snd_count : 2  msg_rec_count : 2  round: 1
+INFO:root:Rec_MSG from: 10  msg: tf; 11  msg_snd_count : 2  msg_rec_count : 2  round: 1
+INFO:root:Send_MSG to: 10  msg: tf_acc; 10  msg_snd_count : 3  msg_rec_count : 3  round: 1
+INFO:root:Rec_MSG from: 10  msg: tf; 12  msg_snd_count : 3  msg_rec_count : 3  round: 1
+INFO:root:Send_MSG to: 10  msg: tf_acc; 11  msg_snd_count : 4  msg_rec_count : 4  round: 1
+INFO:root:Rec_MSG from: 10  msg: tf; 12  msg_snd_count : 4  msg_rec_count : 4  round: 1
+INFO:root:Send_MSG to: 10  msg: tf_acc; 12  msg_snd_count : 5  msg_rec_count : 5  round: 1
