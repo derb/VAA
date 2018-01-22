@@ -7,6 +7,7 @@ import json
 import time
 import Queue
 import threading
+import math
 
 
 class Node:
@@ -63,14 +64,14 @@ class Node:
             print "My ID: " + str(my_id)
             print "anz_knoten " + str(sum_nodes)
             value = random.randint(1, sum_nodes)
-            if not value == my_id:
+            if value == my_id:
+                generated = False
+            else:
                 generated = True
             print "Value: " + str(value)
-        global my_req
-        my_req = (req_time, my_id, value)
+        return req_time, my_id, value
 
     def init_lock(self):
-        self.gen_request()
         req_str = str(my_req[0]) + ";" + str(my_req[1]) + ";" + str(my_req[2])
         self.flood_msgs.append(req_str)
         self.send_to_neighbours("flood_lock", req_str)
@@ -98,7 +99,7 @@ class Node:
             if tmp[0] < my_req[0]:
                 send_ok = True
             else:
-                if not tmp[2] == my_req[2]:
+                if not tmp[2] == my_req[2] and not tmp[1] == my_req[2]:
                     send_ok = True
 
         if send_ok:
@@ -126,23 +127,23 @@ class Node:
         json_msg = json.dumps({'B': str(money)})
         self.send_msg("127.0.0.1", port, "transaction_acc", json_msg)
         if b >= money:
-            money = money + (b * p / 100)
+            money = round((money + (b * p / 100))*100)/100
         else:
-            money = money - (money * p / 100)
+            money = round((money - (money * p / 100))*100)/100
         print "New Money: " + str(money)
 
     def transaction_acc(self, b):
         global percent
         global money
         if b >= money:
-            money = money + (b * percent / 100)
+            money = round((money + (b * percent / 100))*100)/100
         else:
-            money = money - (money * percent / 100)
+            money = round((money - (money * percent / 100))*100)/100
         print "New Money: " + str(money)
 
     def run_bank(self):
         global my_req
-        my_req = []
+        my_req = self.gen_request()
         time_wait = random.randint(0, 3)
         print "Wait_time: " + str(time_wait)
         time.sleep(time_wait)
