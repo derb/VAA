@@ -5,6 +5,8 @@ import socket
 import logging
 import json
 import time
+import Queue
+import threading
 
 
 class Node:
@@ -35,24 +37,64 @@ class Node:
         self.listen_socket.close()
     # ____________________________ END: init & del ___________________________________________________________________
 
-    # ____________________________ BEGIN: Echo _______________________________________________________________________
-    first_echo = -1
-    echo_heard = 0
+    # ____________________________ BEGIN: Bank _______________________________________________________________________
+    sum_nodes = 0
+    lock_queue = Queue.PriorityQueue()
 
-    def send_echo_msg(self):
-        pass
+    flood_fh_id = 0
+    last_flood_msg = ""
 
-    def answer_echo(self):
-        pass
+    money = 0
+    my_req = []
 
-    def handle_echo_msg(self):
-        pass
-    # ____________________________ END: Echo _________________________________________________________________________
+    flood_msgs = []
 
-    # ____________________________ BEGIN: Distributed Consensus ______________________________________________________
-    def start_philosopher_exp(self):
-        print self.onlineNodes
-    # ____________________________ END: Distributed Consensus ________________________________________________________
+    my_id = -1
+
+    def gen_request(self):
+        req_time = int(time.time())
+        generated = False
+        value = 0
+        while not generated:
+            print "My ID: " + str(my_id)
+            print "anz_knoten " + str(sum_nodes)
+            value = random.randint(1, sum_nodes)
+            if not value == my_id:
+                generated = True
+        global my_req
+        my_req = (req_time, self.id, value)
+
+    def init_lock(self):
+        self.gen_request()
+        req_str = str(my_req[0]) + ";" + str(my_req[1]) + ";" + str(my_req[2])
+        self.send_to_neighbours("flood_lock", req_str)
+
+    def flood_lock(self, msg, sid):
+        if msg not in self.flood_msgs:
+            self.flood_fh_id = sid
+            self.last_flood_msg = msg
+            self.flood_msgs.append(msg)
+            for i in range(len(self.neighborNodes)):
+                current_node = self.neighborNodes[i]
+                if not current_node[0] == self.flood_fh_id:
+                    self.send_msg(current_node[1], current_node[2], "flood_lock", msg)
+            tmp = str(msg).split(";")
+            self.lock_queue.put((int(tmp[0]), int(tmp[1]), int(tmp[2])))
+
+    def run_bank(self):
+        time_wait = random.randint(0, 3)
+        print "Wait_time: " + str(time_wait)
+        time.sleep(time_wait)
+        self.init_lock()
+
+    def start_bank(self):
+        global money
+        money = random.randint(0,100000)*1.0
+        print "Start-Capital: " + str(money)
+        bank_t = threading.Thread(target=self.run_bank(), args=self.lock_queue)
+        bank_t.setDaemon(True)
+        bank_t.start()
+    # ____________________________ END: Bank _________________________________________________________________________
 
     # ____________________________ BEGIN: Election ___________________________________________________________________
     is_coordinator = False
@@ -68,7 +110,10 @@ class Node:
 
     election_echo_count = 0
 
-    def init_election(self):
+    def init_election(self, on_nodes):
+        global sum_nodes
+        sum_nodes = on_nodes
+        print str(sum_nodes) + " hier"
         self.will_be_coordinator = random.randint(0, 1)
         print "\nelection value: " + str(self.will_be_coordinator)
         if self.will_be_coordinator == 1:
@@ -95,7 +140,7 @@ class Node:
                 if current_node[0] != self.heard_first_election:
                     self.send_msg(current_node[1], current_node[2], "expend_election", self.election_value)
 
-    def echo_election(self, value, sender_id):
+    def echo_election(self, value):
         if value == self.election_value:
             self.election_msg_counter += 1
             self.election_echo_count += 1
@@ -104,7 +149,12 @@ class Node:
 
             if self.election_echo_count == len(self.neighborNodes) and value == self.id:
                 self.is_coordinator = True
+                self.get_online_nodes()
                 print "I am Coordinator"
+                for i in range(len(self.onlineNodes)):
+                    self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "start_bank", "")
+                self.start_bank()
+
     # ____________________________ END: Election  ____________________________________________________________________
 
     # ____________________________ END: Distributed Consensus ________________________________________________________
@@ -328,11 +378,20 @@ class Node:
             self.election_msg_counter = 0
             self.election_echo_count = 0
 
-            self.init_election()
+            global my_id
+            my_id = self.id
+            self.init_election(int(json_msg["payload"]))
         elif command == "expend_election":
             self.expend_election(json_msg["payload"], json_msg["sID"])
         elif command == "election_echo":
-            self.echo_election(json_msg["payload"], json_msg["sID"])
+            self.echo_election(json_msg["payload"])
+
+        elif command == "start_bank":
+            self.start_bank()
+
+        elif command == "flood_lock":
+            print self.lock_queue.queue
+            self.flood_lock(json_msg["payload"], json_msg["sID"])
         # Other-Msg
         elif command == "msg":
             return

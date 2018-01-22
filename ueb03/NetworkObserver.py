@@ -200,7 +200,7 @@ class NetworkObserver:
 
             # Distributed Consensus
             elif input_str == "7":
-                self.send_msg_to_all("start_exp", "")
+                self.send_msg_to_all("start_exp", str(len(self.onlineNodes)))
             else:
                 print "\nNo such command\n\n"
     # ____________________________ END: RUN &  MSG-Handling __________________________________________________________
