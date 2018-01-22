@@ -51,6 +51,10 @@ class Node:
 
     my_id = -1
 
+    lock_ok_rec = 0
+
+    percent = 0
+
     def gen_request(self):
         req_time = int(time.time())
         generated = False
@@ -61,8 +65,9 @@ class Node:
             value = random.randint(1, sum_nodes)
             if not value == my_id:
                 generated = True
+            print "Value: " + str(value)
         global my_req
-        my_req = (req_time, self.id, value)
+        my_req = (req_time, my_id, value)
 
     def init_lock(self):
         self.gen_request()
@@ -79,11 +84,65 @@ class Node:
                 current_node = self.neighborNodes[i]
                 if not current_node[0] == self.flood_fh_id:
                     self.send_msg(current_node[1], current_node[2], "flood_lock", msg)
-            tmp = str(msg).split(";")
+            self.handle_locking(msg)
+
+    def handle_locking(self, msg):
+        tmp = str(msg).split(";")
+        send_ok = False
+        port = 6000 + int(tmp[1])
+        global my_req
+        print my_req
+        if len(my_req) < 1:
+            send_ok = True
+        else:
+            if tmp[0] < my_req[0]:
+                send_ok = True
+            else:
+                if not tmp[2] == my_req[2]:
+                    send_ok = True
+
+        if send_ok:
+            self.send_msg("127.0.0.1", port, "lock_ok", "")
+        else:
             self.lock_queue.put((int(tmp[0]), int(tmp[1]), int(tmp[2])))
-            self.lock_queue.
+
+    def locking_acc(self):
+        self.lock_ok_rec += 1
+        print self.lock_ok_rec
+        if self.lock_ok_rec == (sum_nodes - 1):
+            print "Lock ok"
+            self.init_transaction()
+
+    def init_transaction(self):
+        global percent
+        percent = random.randint(0, 100)
+        port = 6000 + int(my_req[2])
+        json_msg = json.dumps({'B': str(money), 'p': str(percent)})
+        self.send_msg("127.0.0.1", port, "transaction", json_msg)
+
+    def transaction_rec(self, b, p, sid):
+        global money
+        port = 6000 + sid
+        json_msg = json.dumps({'B': str(money)})
+        self.send_msg("127.0.0.1", port, "transaction_acc", json_msg)
+        if b >= money:
+            money = money + (b * p / 100)
+        else:
+            money = money - (money * p / 100)
+        print "New Money: " + str(money)
+
+    def transaction_acc(self, b):
+        global percent
+        global money
+        if b >= money:
+            money = money + (b * percent / 100)
+        else:
+            money = money - (money * percent / 100)
+        print "New Money: " + str(money)
 
     def run_bank(self):
+        global my_req
+        my_req = []
         time_wait = random.randint(0, 3)
         print "Wait_time: " + str(time_wait)
         time.sleep(time_wait)
@@ -91,7 +150,7 @@ class Node:
 
     def start_bank(self):
         global money
-        money = random.randint(0,100000)*1.0
+        money = random.randint(0, 100000)*1.0
         print "Start-Capital: " + str(money)
         bank_t = threading.Thread(target=self.run_bank(), args=self.lock_queue)
         bank_t.setDaemon(True)
@@ -394,6 +453,18 @@ class Node:
         elif command == "flood_lock":
             print self.lock_queue.queue
             self.flood_lock(json_msg["payload"], json_msg["sID"])
+
+        elif command == "lock_ok":
+            print self.lock_queue.queue
+            self.locking_acc()
+
+        elif command == "transaction":
+            msg = json.loads(json_msg["payload"])
+            self.transaction_rec(float(msg["B"]), int(msg["p"]), int(json_msg["sID"]))
+
+        elif command == "transaction_acc":
+            msg = json.loads(json_msg["payload"])
+            self.transaction_acc(float(msg["B"]))
         # Other-Msg
         elif command == "msg":
             return
