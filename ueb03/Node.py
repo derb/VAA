@@ -67,6 +67,7 @@ class Node:
     def init_lock(self):
         self.gen_request()
         req_str = str(my_req[0]) + ";" + str(my_req[1]) + ";" + str(my_req[2])
+        self.flood_msgs.append(req_str)
         self.send_to_neighbours("flood_lock", req_str)
 
     def flood_lock(self, msg, sid):
@@ -80,6 +81,7 @@ class Node:
                     self.send_msg(current_node[1], current_node[2], "flood_lock", msg)
             tmp = str(msg).split(";")
             self.lock_queue.put((int(tmp[0]), int(tmp[1]), int(tmp[2])))
+            self.lock_queue.
 
     def run_bank(self):
         time_wait = random.randint(0, 3)

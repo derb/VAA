@@ -168,7 +168,7 @@ class NetworkObserver:
               "Initiate Network by Graph:   5" + "\n" + \
               "Get Network-Graph:           6" + "\n\n" + \
               "______ Rumor Experiment ______" + "\n" + \
-              "Start Philosophs:            7" + "\n" + \
+              "Start Bank:                  7" + "\n" + \
               ""
 
     def run(self):
