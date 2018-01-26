@@ -143,24 +143,32 @@ class Node:
         tmp = str(msg).split(";")
         send_ok = False
         port = 6000 + int(tmp[1])
-        self.lock_queue.put(ReqObj().ro(msg))
+        req_ob = ReqObj().ro(msg)
+        self.lock_queue.put(req_ob)
         self.sort_pq()
         global my_req
         print my_req
-        if len(my_req) < 1:
-            send_ok = True
-        else:
-            if tmp[0] < my_req[0]:
-                send_ok = True
-            else:
-                if not tmp[2] == my_req[2] and not tmp[1] == my_req[2]:
-                    send_ok = True
+        my_req_ob = ReqObj(my_req)
+        print my_req_ob
 
-        if send_ok:
-            self.send_msg("127.0.0.1", port, "lock_ok", "")
+        if my_req_ob < req_ob:
+            self.lock_queue.put(req_ob)
         else:
-            self.lock_queue.put(ReqObj(int(tmp[0]), int(tmp[1]), int(tmp[2])))
-            self.sort_pq()
+            self.send_msg("127.0.0.1", port, "lock_ok", "")
+        # if len(my_req) < 1:
+        #     send_ok = True
+        # else:
+        #     if tmp[0] < my_req[0]:
+        #         send_ok = True
+        #     else:
+        #         if not tmp[2] == my_req[2] and not tmp[1] == my_req[2]:
+        #             send_ok = True
+        #
+        # if send_ok:
+        #     self.send_msg("127.0.0.1", port, "lock_ok", "")
+        # else:
+        #     self.lock_queue.put(ReqObj(int(tmp[0]), int(tmp[1]), int(tmp[2])))
+        #     self.sort_pq()
 
     def locking_acc(self):
         self.lock_ok_rec += 1
