@@ -7,7 +7,49 @@ import json
 import time
 import Queue
 import threading
-import math
+
+
+class ReqObj:
+    def __init__(self, prio=0, sid=0, rid=0):
+        self.prio = prio
+        self.sid = sid
+        self.rid = rid
+
+    def __str__(self):
+        return str(self.prio) + ";" + str(self.sid) + ";" + str(self.rid)
+
+    def __repr__(self):
+        return str(self.prio) + ";" + str(self.sid) + ";" + str(self.rid)
+
+    def ro(self, reg_str):
+        tmp = str(reg_str).split(";")
+        self.prio = int(tmp[0])
+        self.sid = int(tmp[1])
+        self.rid = int(tmp[2])
+        return self
+
+    def __cmp__(self, other):
+        if self.prio == other.prio:
+            return cmp(self.sid, other.sid)
+        else:
+            return cmp(self.prio, other.prio)
+
+    def __lt__(self, other):
+        print "self: "
+        print self
+        print "other: "
+        print other
+        if self.prio == other.prio:
+            print self.sid < other.sid
+            return self.sid < other.sid
+        else:
+            return self.prio < other.prio
+
+    def __gt__(self, other):
+        if self.prio == other.prio:
+            return self.sid > other.sid
+        else:
+            return self.prio > other.prio
 
 
 class Node:
@@ -39,6 +81,16 @@ class Node:
     # ____________________________ END: init & del ___________________________________________________________________
 
     # ____________________________ BEGIN: Bank _______________________________________________________________________
+
+    def sort_pq(self):
+        tmp = []
+        while not self.lock_queue.empty():
+            lq_ob = self.lock_queue.get()
+            tmp.append(lq_ob)
+        tmp.sort()
+        for i in range(len(tmp)):
+            self.lock_queue.put(tmp[i])
+
     sum_nodes = 0
     lock_queue = Queue.PriorityQueue()
 
@@ -64,7 +116,7 @@ class Node:
             print "My ID: " + str(my_id)
             print "anz_knoten " + str(sum_nodes)
             value = random.randint(1, sum_nodes)
-            if value == my_id:
+            if value == int(my_id):
                 generated = False
             else:
                 generated = True
@@ -91,6 +143,8 @@ class Node:
         tmp = str(msg).split(";")
         send_ok = False
         port = 6000 + int(tmp[1])
+        self.lock_queue.put(ReqObj().ro(msg))
+        self.sort_pq()
         global my_req
         print my_req
         if len(my_req) < 1:
@@ -105,7 +159,8 @@ class Node:
         if send_ok:
             self.send_msg("127.0.0.1", port, "lock_ok", "")
         else:
-            self.lock_queue.put((int(tmp[0]), int(tmp[1]), int(tmp[2])))
+            self.lock_queue.put(ReqObj(int(tmp[0]), int(tmp[1]), int(tmp[2])))
+            self.sort_pq()
 
     def locking_acc(self):
         self.lock_ok_rec += 1
