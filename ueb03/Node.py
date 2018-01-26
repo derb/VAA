@@ -53,6 +53,12 @@ class ReqObj:
             return int(self.sid) >= int(other.sid)
         return int(self.prio) >= int(other.prio)
 
+    def __eq__(self, other):
+        if int(self.prio) == int(other.prio):
+            if int(self.sid) == int(other.sid):
+                return int(self.rid) == int(other.rid)
+        return False
+
 
 class Node:
     # Socket for Message-Receiving
@@ -142,7 +148,26 @@ class Node:
             self.handle_locking(msg)
 
     def free_lock(self):
-        pass
+        time.sleep(0.5)
+        free_ob = self.lock_queue.get()
+        for i in range(sum_nodes):
+            port = 6000 + i
+            if not i == my_id:
+                self.send_msg("127.0.0.1", port, "free_lock", str(free_ob))
+        port = 6000 + int(free_ob.sid)
+        self.send_msg("127.0.0.1", port, "lock_ok", "")
+
+    def free_lock_acc(self, to_free):
+        ob = self.lock_queue.get()
+        if to_free == ob:
+            port = 6000 + int(to_free.sid)
+            self.send_msg("127.0.0.1", port, "lock_ok", "")
+            return
+        else:
+            self.lock_queue.put(ob)
+            self.sort_pq()
+        print self.lock_queue.queue
+        print self.lock_ok_rec
 
     def handle_locking(self, msg):
         tmp = str(msg).split(";")
@@ -192,8 +217,7 @@ class Node:
             money = round((money - (money * p / 100))*100)/100
         print "New Money: " + str(money)
 
-    @staticmethod
-    def transaction_acc(b):
+    def transaction_acc(self, b):
         global percent
         global money
         if b >= money:
@@ -201,6 +225,9 @@ class Node:
         else:
             money = round((money - (money * percent / 100))*100)/100
         print "New Money: " + str(money)
+        free_l = threading.Thread(target=self.free_lock(), args=self.lock_queue)
+        free_l.setDaemon(True)
+        free_l.start()
 
     def run_bank(self):
         self.my_req.put(self.gen_request())
@@ -526,6 +553,9 @@ class Node:
         elif command == "transaction_acc":
             msg = json.loads(json_msg["payload"])
             self.transaction_acc(float(msg["B"]))
+
+        elif command == "free_lock":
+            self.free_lock_acc(ReqObj().ro(json_msg["payload"]))
         # Other-Msg
         elif command == "msg":
             return
