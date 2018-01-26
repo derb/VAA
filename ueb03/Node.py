@@ -108,6 +108,8 @@ class Node:
     money = 0
     my_req = Queue.Queue()
 
+    rel_list = []
+
     flood_msgs = []
 
     my_id = -1
@@ -137,6 +139,10 @@ class Node:
         self.send_to_neighbours("flood_lock", req_str)
 
     def flood_lock(self, msg, sid):
+        if msg in self.rel_list:
+            tmp = str(msg).split(";")
+            port = 6000 + int(tmp[1])
+            self.send_msg("127.0.0.1", port, "lock_ok", "")
         if msg not in self.flood_msgs:
             self.flood_fh_id = sid
             self.last_flood_msg = msg
@@ -151,13 +157,21 @@ class Node:
         time.sleep(0.5)
         free_ob = self.lock_queue.get()
         for i in range(sum_nodes):
-            port = 6000 + i
+            port = 6001 + i
+            print port
             if not i == my_id:
                 self.send_msg("127.0.0.1", port, "free_lock", str(free_ob))
         port = 6000 + int(free_ob.sid)
         self.send_msg("127.0.0.1", port, "lock_ok", "")
+        self.my_req.get()
+        print "myreq: " + str(self.my_req.queue)
+        print self.lock_queue.queue
+        print self.lock_ok_rec
+        print self.rel_list
+        self.start_bank()
 
     def free_lock_acc(self, to_free):
+        self.rel_list.append(str(to_free))
         ob = self.lock_queue.get()
         if to_free == ob:
             port = 6000 + int(to_free.sid)
@@ -166,8 +180,6 @@ class Node:
         else:
             self.lock_queue.put(ob)
             self.sort_pq()
-        print self.lock_queue.queue
-        print self.lock_ok_rec
 
     def handle_locking(self, msg):
         tmp = str(msg).split(";")
@@ -176,19 +188,21 @@ class Node:
         my_req_ob = self.my_req.get()
         self.my_req.put(my_req_ob)
 
-        if my_req_ob.prio == 0:
+        if int(my_req_ob.prio) == 0:
             self.send_msg("127.0.0.1", port, "lock_ok", "")
             return
         print "my_req_ob: " + str(my_req_ob)
         print "req_ob:    " + str(req_ob)
-        print my_req_ob < req_ob
         if my_req_ob < req_ob:
             self.lock_queue.put(req_ob)
             self.sort_pq()
-            return
+        #    return
         else:
             self.send_msg("127.0.0.1", port, "lock_ok", "")
-            return
+        #    return
+        print self.lock_queue.queue
+        print self.lock_ok_rec
+        print self.rel_list
 
     def locking_acc(self):
         self.lock_ok_rec += 1
@@ -196,6 +210,7 @@ class Node:
         if self.lock_ok_rec == (sum_nodes - 1):
             print "Lock ok"
             self.init_transaction()
+            self.lock_ok_rec = 0
 
     def init_transaction(self):
         global percent
@@ -225,9 +240,8 @@ class Node:
         else:
             money = round((money - (money * percent / 100))*100)/100
         print "New Money: " + str(money)
-        free_l = threading.Thread(target=self.free_lock(), args=self.lock_queue)
-        free_l.setDaemon(True)
-        free_l.start()
+        self.lock_ok_rec = 0
+        self.free_lock()
 
     def run_bank(self):
         self.my_req.put(self.gen_request())
@@ -237,9 +251,6 @@ class Node:
         self.init_lock()
 
     def start_bank(self):
-        global money
-        money = random.randint(0, 100000)*1.0
-        print "Start-Capital: " + str(money)
         bank_t = threading.Thread(target=self.run_bank(), args=self.lock_queue)
         bank_t.setDaemon(True)
         bank_t.start()
@@ -262,7 +273,7 @@ class Node:
     def init_election(self, on_nodes):
         global sum_nodes
         sum_nodes = on_nodes
-        print str(sum_nodes) + " hier"
+        print str(sum_nodes)
         self.will_be_coordinator = random.randint(0, 1)
         print "\nelection value: " + str(self.will_be_coordinator)
         if self.will_be_coordinator == 1:
@@ -529,6 +540,10 @@ class Node:
 
             global my_id
             my_id = self.id
+            global money
+            money = random.randint(0, 100000) * 1.0
+            print "Start-Capital: " + str(money)
+
             self.init_election(int(json_msg["payload"]))
         elif command == "expend_election":
             self.expend_election(json_msg["payload"], json_msg["sID"])
@@ -539,11 +554,9 @@ class Node:
             self.start_bank()
 
         elif command == "flood_lock":
-            print self.lock_queue.queue
             self.flood_lock(json_msg["payload"], json_msg["sID"])
 
         elif command == "lock_ok":
-            print self.lock_queue.queue
             self.locking_acc()
 
         elif command == "transaction":
