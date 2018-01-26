@@ -29,23 +29,29 @@ class ReqObj:
         return self
 
     def __cmp__(self, other):
-        if self.prio == other.prio:
-            return cmp(self.sid, other.sid)
-        else:
-            return cmp(self.prio, other.prio)
+        if int(self.prio) == int(other.prio):
+            return cmp(int(self.sid), int(other.sid))
+        return cmp(int(self.prio), int(other.prio))
 
     def __lt__(self, other):
-        if self.prio == other.prio:
-            print self.sid < other.sid
-            return self.sid < other.sid
-        else:
-            return self.prio < other.prio
+        if int(self.prio) == int(other.prio):
+            return int(self.sid) < int(other.sid)
+        return int(self.prio) < int(other.prio)
 
     def __gt__(self, other):
-        if self.prio == other.prio:
-            return self.sid > other.sid
-        else:
-            return self.prio > other.prio
+        if int(self.prio) == int(other.prio):
+            return int(self.sid) > int(other.sid)
+        return int(self.prio) > int(other.prio)
+
+    def __le__(self, other):
+        if int(self.prio) == int(other.prio):
+            return int(self.sid) <= int(other.sid)
+        return int(self.prio) <= int(other.prio)
+
+    def __ge__(self, other):
+        if int(self.prio) == int(other.prio):
+            return int(self.sid) >= int(other.sid)
+        return int(self.prio) >= int(other.prio)
 
 
 class Node:
@@ -94,7 +100,7 @@ class Node:
     last_flood_msg = ""
 
     money = 0
-    my_req = []
+    my_req = Queue.Queue()
 
     flood_msgs = []
 
@@ -115,10 +121,12 @@ class Node:
                 generated = False
             else:
                 generated = True
-        return req_time, my_id, value
+        return ReqObj(req_time, my_id, value)
 
     def init_lock(self):
-        req_str = str(my_req[0]) + ";" + str(my_req[1]) + ";" + str(my_req[2])
+        req_ob = self.my_req.get()
+        self.my_req.put(req_ob)
+        req_str = str(req_ob.prio) + ";" + str(req_ob.sid) + ";" + str(req_ob.rid)
         self.flood_msgs.append(req_str)
         self.send_to_neighbours("flood_lock", req_str)
 
@@ -140,14 +148,22 @@ class Node:
         tmp = str(msg).split(";")
         port = 6000 + int(tmp[1])
         req_ob = ReqObj().ro(msg)
-        self.lock_queue.put(req_ob)
-        self.sort_pq()
-        global my_req
-        my_req_ob = ReqObj(my_req)
+        my_req_ob = self.my_req.get()
+        self.my_req.put(my_req_ob)
+
+        if my_req_ob.prio == 0:
+            self.send_msg("127.0.0.1", port, "lock_ok", "")
+            return
+        print "my_req_ob: " + str(my_req_ob)
+        print "req_ob:    " + str(req_ob)
+        print my_req_ob < req_ob
         if my_req_ob < req_ob:
             self.lock_queue.put(req_ob)
+            self.sort_pq()
+            return
         else:
             self.send_msg("127.0.0.1", port, "lock_ok", "")
+            return
 
     def locking_acc(self):
         self.lock_ok_rec += 1
@@ -159,7 +175,9 @@ class Node:
     def init_transaction(self):
         global percent
         percent = random.randint(0, 100)
-        port = 6000 + int(my_req[2])
+        req_ob = self.my_req.get()
+        self.my_req.put(req_ob)
+        port = 6000 + int(req_ob.rid)
         json_msg = json.dumps({'B': str(money), 'p': str(percent)})
         self.send_msg("127.0.0.1", port, "transaction", json_msg)
 
@@ -185,8 +203,7 @@ class Node:
         print "New Money: " + str(money)
 
     def run_bank(self):
-        global my_req
-        my_req = self.gen_request()
+        self.my_req.put(self.gen_request())
         time_wait = random.randint(0, 3)
         print "Wait_time: " + str(time_wait)
         time.sleep(time_wait)
