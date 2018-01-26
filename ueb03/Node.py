@@ -35,10 +35,6 @@ class ReqObj:
             return cmp(self.prio, other.prio)
 
     def __lt__(self, other):
-        print "self: "
-        print self
-        print "other: "
-        print other
         if self.prio == other.prio:
             print self.sid < other.sid
             return self.sid < other.sid
@@ -108,19 +104,17 @@ class Node:
 
     percent = 0
 
-    def gen_request(self):
+    @staticmethod
+    def gen_request():
         req_time = int(time.time())
         generated = False
         value = 0
         while not generated:
-            print "My ID: " + str(my_id)
-            print "anz_knoten " + str(sum_nodes)
             value = random.randint(1, sum_nodes)
             if value == int(my_id):
                 generated = False
             else:
                 generated = True
-            print "Value: " + str(value)
         return req_time, my_id, value
 
     def init_lock(self):
@@ -139,36 +133,21 @@ class Node:
                     self.send_msg(current_node[1], current_node[2], "flood_lock", msg)
             self.handle_locking(msg)
 
+    def free_lock(self):
+        pass
+
     def handle_locking(self, msg):
         tmp = str(msg).split(";")
-        send_ok = False
         port = 6000 + int(tmp[1])
         req_ob = ReqObj().ro(msg)
         self.lock_queue.put(req_ob)
         self.sort_pq()
         global my_req
-        print my_req
         my_req_ob = ReqObj(my_req)
-        print my_req_ob
-
         if my_req_ob < req_ob:
             self.lock_queue.put(req_ob)
         else:
             self.send_msg("127.0.0.1", port, "lock_ok", "")
-        # if len(my_req) < 1:
-        #     send_ok = True
-        # else:
-        #     if tmp[0] < my_req[0]:
-        #         send_ok = True
-        #     else:
-        #         if not tmp[2] == my_req[2] and not tmp[1] == my_req[2]:
-        #             send_ok = True
-        #
-        # if send_ok:
-        #     self.send_msg("127.0.0.1", port, "lock_ok", "")
-        # else:
-        #     self.lock_queue.put(ReqObj(int(tmp[0]), int(tmp[1]), int(tmp[2])))
-        #     self.sort_pq()
 
     def locking_acc(self):
         self.lock_ok_rec += 1
@@ -195,7 +174,8 @@ class Node:
             money = round((money - (money * p / 100))*100)/100
         print "New Money: " + str(money)
 
-    def transaction_acc(self, b):
+    @staticmethod
+    def transaction_acc(b):
         global percent
         global money
         if b >= money:
