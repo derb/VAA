@@ -103,7 +103,6 @@ class Node:
     lock_queue = Queue.PriorityQueue()
 
     flood_fh_id = 0
-    last_flood_msg = ""
 
     money = 0
     my_req = Queue.Queue()
@@ -145,7 +144,6 @@ class Node:
             self.send_msg("127.0.0.1", port, "lock_ok", "")
         if msg not in self.flood_msgs:
             self.flood_fh_id = sid
-            self.last_flood_msg = msg
             self.flood_msgs.append(msg)
             for i in range(len(self.neighborNodes)):
                 current_node = self.neighborNodes[i]
@@ -164,14 +162,13 @@ class Node:
         port = 6000 + int(free_ob.sid)
         self.send_msg("127.0.0.1", port, "lock_ok", "")
         self.my_req.get()
-        print "myreq: " + str(self.my_req.queue)
-        print self.lock_queue.queue
-        print self.lock_ok_rec
-        print self.rel_list
+        print "Lock_Queue: " + str(self.lock_queue.queue)
         self.start_bank()
 
     def free_lock_acc(self, to_free):
         self.rel_list.append(str(to_free))
+        if self.lock_queue.empty():
+            return
         ob = self.lock_queue.get()
         if to_free == ob:
             port = 6000 + int(to_free.sid)
@@ -196,17 +193,13 @@ class Node:
         if my_req_ob < req_ob:
             self.lock_queue.put(req_ob)
             self.sort_pq()
-        #    return
         else:
             self.send_msg("127.0.0.1", port, "lock_ok", "")
-        #    return
-        print self.lock_queue.queue
-        print self.lock_ok_rec
-        print self.rel_list
+        print "Lock_Queue: " + str(self.lock_queue.queue)
 
     def locking_acc(self):
         self.lock_ok_rec += 1
-        print self.lock_ok_rec
+        print "Current Lock ok: " + str(self.lock_ok_rec)
         if self.lock_ok_rec == (sum_nodes - 1):
             print "Lock ok"
             self.init_transaction()
