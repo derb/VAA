@@ -206,6 +206,8 @@ class Node:
             self.lock_ok_rec = 0
 
     def init_transaction(self):
+        # lock for money_req
+        self.money_locked.put(True)
         global percent
         percent = random.randint(0, 100)
         req_ob = self.my_req.get()
@@ -215,6 +217,8 @@ class Node:
         self.send_msg("127.0.0.1", port, "transaction", json_msg)
 
     def transaction_rec(self, b, p, sid):
+        # lock for money_req
+        self.money_locked.put(True)
         global money
         port = 6000 + sid
         json_msg = json.dumps({'B': str(money)})
@@ -224,8 +228,12 @@ class Node:
         else:
             money = round((money - (money * p / 100))*100)/100
         print "New Money: " + str(money)
+        # free lock for money_req
+        self.money_locked.get()
 
     def transaction_acc(self, b):
+        # free lock for money_req
+        self.money_locked.get()
         global percent
         global money
         if b >= money:
@@ -337,6 +345,14 @@ class Node:
         print "Full Money: " + str(full_money)
         msg = json.dumps({'full_money': str(full_money), 'list': value})
         self.send_msg("127.0.0.1", 5001, "capital_status", msg)
+
+    def reset_money_evaluation(self):
+        self.money_locked.queue.clear()
+        self.money_init_node = -1
+        self.money_req_msg_sum = 0
+        self.money_req_echo_sum = 0
+        self.money_req_spread.queue.clear()
+        self.msg_str_queue.queue.clear()
 
     # ____________________________ END: Money Status _________________________________________________________________
 
@@ -656,6 +672,9 @@ class Node:
             self.spread_money_status(json_msg["sID"])
         elif command == "get_money_echo":
             self.echo_money_status(str(json_msg["payload"]))
+
+        elif command == "rme":
+            self.reset_money_evaluation()
 
         # Other-Msg
         elif command == "msg":

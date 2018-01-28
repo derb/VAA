@@ -169,6 +169,8 @@ class NetworkObserver:
             for i in range(len(self.onlineNodes)):
                 self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "start_bank", "")
         self.cap_msg_count += 1
+        for i in range(len(self.onlineNodes)):
+            self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "rme", "")
 
     def handle_msg(self, msg):
         json_msg = json.loads(msg)
