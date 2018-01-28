@@ -249,6 +249,105 @@ class Node:
         bank_t.start()
     # ____________________________ END: Bank _________________________________________________________________________
 
+    # ____________________________ BEGIN: Money Status _______________________________________________________________
+    money_locked = Queue.Queue()
+    money_init_node = -1
+    money_req_msg_sum = 0
+    money_req_echo_sum = 0
+    money_req_spread = Queue.Queue()
+
+    msg_str_queue = Queue.Queue()
+
+    def init_money_stat(self):
+        self.send_to_neighbours("get_money_stat", "")
+        self.money_req_spread.put(True)
+
+    def spread_money_status(self, sid):
+        self.money_req_msg_sum += 1
+
+        print "mrms: " + str(self.money_req_msg_sum)
+        print "mres: " + str(self.money_req_echo_sum)
+
+        if self.money_init_node == -1:
+            self.money_init_node = int(sid)
+        if self.money_req_spread.empty():
+            self.money_req_spread.put(True)
+            for i in range(len(self.neighborNodes)):
+                node = self.neighborNodes[i]
+                to_send = int(node[0]) == int(self.money_init_node)
+                if not to_send:
+                    self.send_msg(node[1], node[2], "get_money_stat", "")
+        # heard all requests:
+        if self.money_req_msg_sum == len(self.neighborNodes):
+            self.start_money_eval(self.money_init_node)
+
+    def echo_money_status(self, msg):
+        self.money_req_echo_sum += 1
+        if self.msg_str_queue.empty():
+            self.msg_str_queue.put(msg)
+        else:
+            tmp_msg = self.msg_str_queue.get()
+            tmp_msg += ";" + msg
+            self.msg_str_queue.put(tmp_msg)
+        print "mrms: " + str(self.money_req_msg_sum)
+        print "mres: " + str(self.money_req_echo_sum)
+
+        ref_val = self.money_req_msg_sum + self.money_req_echo_sum
+        if ref_val == len(self.neighborNodes):
+            # for coordinator:
+            if self.is_coordinator:
+                if self.money_locked.empty():
+                    value = str(self.msg_str_queue.get())
+                    value += ";" + str(self.id) + ":" + str(money)
+
+                    values = value.split(";")
+                    for i in range(len(values)):
+                        print values[i]
+                else:
+                    my_money_eval = threading.Thread(target=self.eval_coordinator_money(self.id))
+                    my_money_eval.setDaemon(True)
+                    my_money_eval.start()
+            else:
+                self.start_money_eval(self.money_init_node)
+
+    def start_money_eval(self, to_id):
+        money_eval = threading.Thread(target=self.eval_money(to_id))
+        money_eval.setDaemon(True)
+        money_eval.start()
+
+    def eval_money(self, to_id):
+        pl = ""
+        if not self.msg_str_queue.empty():
+            pl = self.msg_str_queue.get() + ";"
+        while True:
+            if self.money_locked.empty():
+                pl += str(self.id) + ":" + str(money)
+                port = 6000 + to_id
+                self.send_msg("127.0.0.1", port, "get_money_echo", pl)
+                return
+            else:
+                time.sleep(0.1)
+
+    def eval_coordinator_money(self, self_id):
+        pl = ""
+        if not self.msg_str_queue.empty():
+            pl = self.msg_str_queue.get() + ";"
+        while True:
+            if self.money_locked.empty():
+                pl += str(self_id) + ":" + str(money)
+                self.msg_str_queue.put(pl)
+
+                value = str(self.msg_str_queue.get())
+                values = value.split(";")
+                for i in range(len(values)):
+                    print values[i]
+
+                return
+            else:
+                time.sleep(0.1)
+
+    # ____________________________ END: Money Status _________________________________________________________________
+
     # ____________________________ BEGIN: Election ___________________________________________________________________
     is_coordinator = False
 
@@ -304,13 +403,12 @@ class Node:
                 self.is_coordinator = True
                 self.get_online_nodes()
                 print "I am Coordinator"
-                for i in range(len(self.onlineNodes)):
-                    self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "start_bank", "")
-                self.start_bank()
+                self.init_money_stat()
+                # for i in range(len(self.onlineNodes)):
+                #    self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "start_bank", "")
+                # self.start_bank()
 
     # ____________________________ END: Election  ____________________________________________________________________
-
-    # ____________________________ END: Distributed Consensus ________________________________________________________
 
     # ____________________________ BEGIN: get and set Node IDs, IPs & Ports __________________________________________
     @staticmethod
@@ -562,6 +660,12 @@ class Node:
 
         elif command == "free_lock":
             self.free_lock_acc(ReqObj().ro(json_msg["payload"]))
+
+        elif command == "get_money_stat":
+            self.spread_money_status(json_msg["sID"])
+        elif command == "get_money_echo":
+            self.echo_money_status(str(json_msg["payload"]))
+
         # Other-Msg
         elif command == "msg":
             return
