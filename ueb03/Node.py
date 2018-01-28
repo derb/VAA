@@ -264,10 +264,6 @@ class Node:
 
     def spread_money_status(self, sid):
         self.money_req_msg_sum += 1
-
-        print "mrms: " + str(self.money_req_msg_sum)
-        print "mres: " + str(self.money_req_echo_sum)
-
         if self.money_init_node == -1:
             self.money_init_node = int(sid)
         if self.money_req_spread.empty():
@@ -289,24 +285,13 @@ class Node:
             tmp_msg = self.msg_str_queue.get()
             tmp_msg += ";" + msg
             self.msg_str_queue.put(tmp_msg)
-        print "mrms: " + str(self.money_req_msg_sum)
-        print "mres: " + str(self.money_req_echo_sum)
-
         ref_val = self.money_req_msg_sum + self.money_req_echo_sum
         if ref_val == len(self.neighborNodes):
             # for coordinator:
             if self.is_coordinator:
-                if self.money_locked.empty():
-                    value = str(self.msg_str_queue.get())
-                    value += ";" + str(self.id) + ":" + str(money)
-
-                    values = value.split(";")
-                    for i in range(len(values)):
-                        print values[i]
-                else:
-                    my_money_eval = threading.Thread(target=self.eval_coordinator_money(self.id))
-                    my_money_eval.setDaemon(True)
-                    my_money_eval.start()
+                my_money_eval = threading.Thread(target=self.eval_coordinator_money(self.id))
+                my_money_eval.setDaemon(True)
+                my_money_eval.start()
             else:
                 self.start_money_eval(self.money_init_node)
 
@@ -341,7 +326,6 @@ class Node:
                 values = value.split(";")
                 for i in range(len(values)):
                     print values[i]
-
                 return
             else:
                 time.sleep(0.1)
