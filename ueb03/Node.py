@@ -397,7 +397,7 @@ class Node:
                 print "I am Coordinator"
                 self.init_money_stat()
                 # for i in range(len(self.onlineNodes)):
-                #    self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "start_bank", "")
+                #     self.send_msg(self.onlineNodes[i][1], self.onlineNodes[i][2], "start_bank", "")
                 # self.start_bank()
 
     # ____________________________ END: Election  ____________________________________________________________________
