@@ -198,8 +198,6 @@ class Node:
             self.lock_ok_rec = 0
 
     def init_transaction(self):
-        # lock for money_req
-        self.money_locked.put(True)
         global percent
         percent = random.randint(0, 100)
         req_ob = self.my_req.get()
@@ -212,7 +210,6 @@ class Node:
 
     def transaction_rec(self, b, p, sid):
         # lock for money_req
-        self.money_locked.put(True)
         money = self.money.get()
         port = 6000 + sid
         json_msg = json.dumps({'B': str(money)})
@@ -223,12 +220,8 @@ class Node:
             money = round((money - (money * p / 100))*100)/100
         print "New Money: " + str(money)
         self.money.put(money)
-        # free lock for money_req
-        self.money_locked.queue.clear()
 
     def transaction_acc(self, b):
-        # free lock for money_req
-        self.money_locked.queue.clear()
         global percent
         money = self.money.get()
         if b >= money:
@@ -254,7 +247,6 @@ class Node:
     # ____________________________ END: Bank _________________________________________________________________________
 
     # ____________________________ BEGIN: Money Status _______________________________________________________________
-    money_locked = Queue.Queue()
     money_init_node = -1
     money_req_msg_sum = 0
     money_req_echo_sum = 0
@@ -342,7 +334,6 @@ class Node:
         self.send_msg("127.0.0.1", 5001, "capital_status", msg)
 
     def reset_money_evaluation(self):
-        self.money_locked.queue.clear()
         self.money_init_node = -1
         self.money_req_msg_sum = 0
         self.money_req_echo_sum = 0
@@ -355,7 +346,7 @@ class Node:
             money_reval.start()
 
     def re_init_money_stat(self, node_list):
-        ref_time = int(time.time()) + 7
+        ref_time = int(time.time()) + 10
         while True:
             if time.time() > ref_time:
                 break

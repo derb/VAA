@@ -150,7 +150,7 @@ class NetworkObserver:
     def capital_msg(self, json_msg):
         print ""
         print ""
-        print "______________________________"
+        print "______________________________ MSG-NR: " + str(self.cap_msg_count)
         print "Money-Status:"
         print ""
         print json.loads(json_msg["payload"])["full_money"]
