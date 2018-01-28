@@ -101,7 +101,7 @@ class Node:
     sum_nodes = 0
     lock_queue = Queue.PriorityQueue()
     flood_fh_id = 0
-    money = 0
+    money = Queue.Queue()
     my_req = Queue.Queue()
     rel_list = []
     flood_msgs = []
@@ -205,13 +205,15 @@ class Node:
         req_ob = self.my_req.get()
         self.my_req.put(req_ob)
         port = 6000 + int(req_ob.rid)
+        money = self.money.get()
+        self.money.put(money)
         json_msg = json.dumps({'B': str(money), 'p': str(percent)})
         self.send_msg("127.0.0.1", port, "transaction", json_msg)
 
     def transaction_rec(self, b, p, sid):
         # lock for money_req
         self.money_locked.put(True)
-        global money
+        money = self.money.get()
         port = 6000 + sid
         json_msg = json.dumps({'B': str(money)})
         self.send_msg("127.0.0.1", port, "transaction_acc", json_msg)
@@ -220,6 +222,7 @@ class Node:
         else:
             money = round((money - (money * p / 100))*100)/100
         print "New Money: " + str(money)
+        self.money.put(money)
         # free lock for money_req
         self.money_locked.queue.clear()
 
@@ -227,12 +230,13 @@ class Node:
         # free lock for money_req
         self.money_locked.queue.clear()
         global percent
-        global money
+        money = self.money.get()
         if b >= money:
             money = round((money + (b * percent / 100))*100)/100
         else:
             money = round((money - (money * percent / 100))*100)/100
         print "New Money: " + str(money)
+        self.money.put(money)
         self.lock_ok_rec = 0
         self.free_lock()
 
@@ -305,6 +309,8 @@ class Node:
             pl = self.msg_str_queue.get() + ";"
         while True:
             if self.money_locked.empty():
+                money = self.money.get()
+                self.money.put(money)
                 pl += str(self.id) + ":" + str(money)
                 port = 6000 + to_id
                 self.send_msg("127.0.0.1", port, "get_money_echo", pl)
@@ -316,10 +322,12 @@ class Node:
             pl = self.msg_str_queue.get() + ";"
         while True:
             if self.money_locked.empty():
+                money = self.money.get()
+                self.money.put(money)
                 pl += str(self_id) + ":" + str(money)
                 self.msg_str_queue.put(pl)
-
-                value = str(self.msg_str_queue.get())
+                value = pl
+                # value = str(self.msg_str_queue.get())
                 values = value.split(";")
                 for i in range(len(values)):
                     print values[i]
@@ -341,10 +349,10 @@ class Node:
         self.money_req_spread.queue.clear()
         self.msg_str_queue.queue.clear()
         # for coordinator
-        if self.is_coordinator:
-            money_reval = threading.Thread(target=self.re_init_money_stat(self.neighborNodes))
-            money_reval.setDaemon(True)
-            money_reval.start()
+        # if self.is_coordinator:
+        #     money_reval = threading.Thread(target=self.re_init_money_stat(self.neighborNodes))
+        #     money_reval.setDaemon(True)
+        #     money_reval.start()
 
     def re_init_money_stat(self, node_list):
         ref_time = int(time.time()) + 7
@@ -620,8 +628,8 @@ class Node:
             self.election_echo_count = 0
             global my_id
             my_id = self.id
-            global money
             money = random.randint(0, 100000) * 1.0
+            self.money.put(money)
             print "Start-Capital: " + str(money)
             self.init_election(int(json_msg["payload"]))
         elif command == "expend_election":
