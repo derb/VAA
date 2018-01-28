@@ -89,7 +89,6 @@ class Node:
     # ____________________________ END: init & del ___________________________________________________________________
 
     # ____________________________ BEGIN: Bank _______________________________________________________________________
-
     def sort_pq(self):
         tmp = []
         while not self.lock_queue.empty():
@@ -101,20 +100,13 @@ class Node:
 
     sum_nodes = 0
     lock_queue = Queue.PriorityQueue()
-
     flood_fh_id = 0
-
     money = 0
     my_req = Queue.Queue()
-
     rel_list = []
-
     flood_msgs = []
-
     my_id = -1
-
     lock_ok_rec = 0
-
     percent = 0
 
     @staticmethod
@@ -229,11 +221,11 @@ class Node:
             money = round((money - (money * p / 100))*100)/100
         print "New Money: " + str(money)
         # free lock for money_req
-        self.money_locked.get()
+        self.money_locked.queue.clear()
 
     def transaction_acc(self, b):
         # free lock for money_req
-        self.money_locked.get()
+        self.money_locked.queue.clear()
         global percent
         global money
         if b >= money:
@@ -263,7 +255,6 @@ class Node:
     money_req_msg_sum = 0
     money_req_echo_sum = 0
     money_req_spread = Queue.Queue()
-
     msg_str_queue = Queue.Queue()
 
     def init_money_stat(self):
@@ -318,8 +309,6 @@ class Node:
                 port = 6000 + to_id
                 self.send_msg("127.0.0.1", port, "get_money_echo", pl)
                 return
-            else:
-                time.sleep(0.1)
 
     def eval_coordinator_money(self, self_id):
         pl = ""
@@ -335,8 +324,6 @@ class Node:
                 for i in range(len(values)):
                     print values[i]
                 break
-            else:
-                time.sleep(0.1)
         # process values
         full_money = 0.0
         for i in range(len(values)):
@@ -353,21 +340,30 @@ class Node:
         self.money_req_echo_sum = 0
         self.money_req_spread.queue.clear()
         self.msg_str_queue.queue.clear()
+        # for coordinator
+        if self.is_coordinator:
+            money_reval = threading.Thread(target=self.re_init_money_stat(self.neighborNodes))
+            money_reval.setDaemon(True)
+            money_reval.start()
+
+    def re_init_money_stat(self, node_list):
+        ref_time = int(time.time()) + 7
+        while True:
+            if time.time() > ref_time:
+                break
+        for i in range(len(node_list)):
+            self.send_msg(node_list[i][1], node_list[i][2], "get_money_stat", "")
+        self.money_req_spread.put(True)
 
     # ____________________________ END: Money Status _________________________________________________________________
 
     # ____________________________ BEGIN: Election ___________________________________________________________________
     is_coordinator = False
-
     election_handled = False
-
     will_be_coordinator = -1
-
     election_value = -1
     heard_first_election = -1
-
     election_msg_counter = 0
-
     election_echo_count = 0
 
     def init_election(self, on_nodes):
@@ -423,21 +419,17 @@ class Node:
     def get_params(searched_id):
         config_file = open('config', 'r')
         not_found = True
-
         while not_found:
             current_entry = config_file.readline()
-
             if current_entry == "":
                 print "Error: Cannot find Port for the ID " + str(searched_id)
                 return "-1"
             else:
                 blank_pos = string.find(current_entry, " ")
                 colon_pos = string.find(current_entry, ":")
-
                 ce_id = current_entry[0:blank_pos]
                 ce_ip = current_entry[blank_pos + 1:colon_pos]
                 ce_port = current_entry[colon_pos + 1:len(current_entry) - 1]
-
                 if searched_id == ce_id:
                     ip = ce_ip
                     port = ce_port
@@ -458,16 +450,12 @@ class Node:
     def get_online_nodes(self):
         config_file = open('config', 'r')
         current_entry = config_file.readline()
-
         while current_entry != "":
-
             blank_pos = string.find(current_entry, " ")
             colon_pos = string.find(current_entry, ":")
-
             ce_id = current_entry[0:blank_pos]
             ce_ip = current_entry[blank_pos + 1:colon_pos]
             ce_port = current_entry[colon_pos + 1:len(current_entry) - 1]
-
             if ce_id != "" and ce_id != self.id:
                 self.onlineNodes.append((ce_id, ce_ip, ce_port))
             current_entry = config_file.readline()
@@ -495,7 +483,6 @@ class Node:
             graph = open(graph_file, 'r')
             graph_neighbours = []
             finished = False
-
             while not finished:
                 current_entry = graph.readline()
                 if current_entry.startswith("}"):
@@ -542,7 +529,6 @@ class Node:
 
     def remove_finished_node(self, node_id):
         self.neighborNodes = [(n_id, ip, port) for n_id, ip, port in self.neighborNodes if n_id != node_id]
-
     # ____________________________ END: Node-Management-Functions ____________________________________________________
 
     # ____________________________ BEGIN: Send-Functions _____________________________________________________________
@@ -592,9 +578,7 @@ class Node:
     # Handling of received Messages
     def msg_handling(self, msg):
         json_msg = json.loads(msg)
-
         command = str(json_msg["cmd"])
-
         # Node-Control-Msg
         if command == "end":
             # stop self
@@ -606,7 +590,6 @@ class Node:
         elif command == "rmInit":
             # unset self as Initiator
             self.isInitiator = False
-
         # Network-Management-Msg
         elif command == "randNG":
             # generate random Network
@@ -626,7 +609,7 @@ class Node:
             new_neighbour = str(json_msg["payload"]).split(",")
             self.neighborNodes.append((new_neighbour[0], new_neighbour[1], new_neighbour[2]))
 
-        # Distributed Consensus
+        # Bank Expermiment
         elif command == "start_exp":
             self.is_coordinator = False
             self.election_handled = False
@@ -635,44 +618,34 @@ class Node:
             self.heard_first_election = -1
             self.election_msg_counter = 0
             self.election_echo_count = 0
-
             global my_id
             my_id = self.id
             global money
             money = random.randint(0, 100000) * 1.0
             print "Start-Capital: " + str(money)
-
             self.init_election(int(json_msg["payload"]))
         elif command == "expend_election":
             self.expend_election(json_msg["payload"], json_msg["sID"])
         elif command == "election_echo":
             self.echo_election(json_msg["payload"])
-
         elif command == "start_bank":
             self.start_bank()
-
         elif command == "flood_lock":
             self.flood_lock(json_msg["payload"], json_msg["sID"])
-
         elif command == "lock_ok":
             self.locking_acc()
-
         elif command == "transaction":
             msg = json.loads(json_msg["payload"])
             self.transaction_rec(float(msg["B"]), int(msg["p"]), int(json_msg["sID"]))
-
         elif command == "transaction_acc":
             msg = json.loads(json_msg["payload"])
             self.transaction_acc(float(msg["B"]))
-
         elif command == "free_lock":
             self.free_lock_acc(ReqObj().ro(json_msg["payload"]))
-
         elif command == "get_money_stat":
             self.spread_money_status(json_msg["sID"])
         elif command == "get_money_echo":
             self.echo_money_status(str(json_msg["payload"]))
-
         elif command == "rme":
             self.reset_money_evaluation()
 
