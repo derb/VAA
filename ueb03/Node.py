@@ -326,9 +326,15 @@ class Node:
                 values = value.split(";")
                 for i in range(len(values)):
                     print values[i]
-                return
+                break
             else:
                 time.sleep(0.1)
+        # process values
+        full_money = 0.0
+        for i in range(len(values)):
+            tmp_val = values[i].split(":")
+            full_money += float(tmp_val[1])
+        print "Full Money: " + str(full_money)
 
     # ____________________________ END: Money Status _________________________________________________________________
 
