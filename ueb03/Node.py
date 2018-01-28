@@ -308,7 +308,7 @@ class Node:
         if not self.msg_str_queue.empty():
             pl = self.msg_str_queue.get() + ";"
         while True:
-            if self.money_locked.empty():
+            if not self.money.empty():
                 money = self.money.get()
                 self.money.put(money)
                 pl += str(self.id) + ":" + str(money)
@@ -321,7 +321,7 @@ class Node:
         if not self.msg_str_queue.empty():
             pl = self.msg_str_queue.get() + ";"
         while True:
-            if self.money_locked.empty():
+            if not self.money.empty():
                 money = self.money.get()
                 self.money.put(money)
                 pl += str(self_id) + ":" + str(money)
@@ -349,10 +349,10 @@ class Node:
         self.money_req_spread.queue.clear()
         self.msg_str_queue.queue.clear()
         # for coordinator
-        # if self.is_coordinator:
-        #     money_reval = threading.Thread(target=self.re_init_money_stat(self.neighborNodes))
-        #     money_reval.setDaemon(True)
-        #     money_reval.start()
+        if self.is_coordinator:
+            money_reval = threading.Thread(target=self.re_init_money_stat(self.neighborNodes))
+            money_reval.setDaemon(True)
+            money_reval.start()
 
     def re_init_money_stat(self, node_list):
         ref_time = int(time.time()) + 7
