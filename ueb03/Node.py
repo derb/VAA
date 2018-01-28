@@ -335,6 +335,8 @@ class Node:
             tmp_val = values[i].split(":")
             full_money += float(tmp_val[1])
         print "Full Money: " + str(full_money)
+        msg = json.dumps({'full_money': str(full_money), 'list': value})
+        self.send_msg("127.0.0.1", 5001, "capital_status", msg)
 
     # ____________________________ END: Money Status _________________________________________________________________
 
@@ -494,7 +496,6 @@ class Node:
                 self.neighborNodes.append(self.get_params(graph_neighbours[i]))
         except IOError:
             print "not a valid Graph-File\n"
-            pass
     # ____________________________ END: Network-Generation ___________________________________________________________
 
     # ____________________________ BEGIN: Network-Graph-Generation ___________________________________________________

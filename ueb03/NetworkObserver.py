@@ -157,6 +157,25 @@ class NetworkObserver:
         if command == "rumorStat":
             print json_msg["sID"] + " --> " + json_msg["payload"]
 
+        if command == "capital_status":
+            print ""
+            print ""
+            print "______________________________"
+            print "Money-Status:"
+            print ""
+            print json.loads(json_msg["payload"])["full_money"]
+            msg_list = str(json.loads(json_msg["payload"])["list"]).split(";")
+            full_list = []
+            for i in range(len(msg_list)):
+                tuples = msg_list[i].split(":")
+                full_list.append((int(tuples[0]), float(tuples[1])))
+            full_list.sort()
+            print ""
+            for i in range(len(full_list)):
+                print "Node_" + str(full_list[i][0]) + "  has money: " + str(full_list[i][1])
+            print ""
+            print ""
+
     @staticmethod
     def print_commands():
         print "\n"                                      \
