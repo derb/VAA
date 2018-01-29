@@ -148,9 +148,13 @@ class NetworkObserver:
     cap_msg_count = 0
 
     def capital_msg(self, json_msg):
+        has_warning = int((json.loads(json_msg["payload"])["warning"]))
+        print has_warning
         print ""
         print ""
         print "______________________________ MSG-NR: " + str(self.cap_msg_count)
+        if has_warning == 1:
+            print "Warning!"
         print "Money-Status:"
         print ""
         print json.loads(json_msg["payload"])["full_money"]

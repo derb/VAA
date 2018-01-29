@@ -252,6 +252,7 @@ class Node:
     money_req_echo_sum = 0
     money_req_spread = Queue.Queue()
     msg_str_queue = Queue.Queue()
+    ref_money = Queue.Queue()
 
     def init_money_stat(self):
         self.send_to_neighbours("get_money_stat", "")
@@ -330,7 +331,15 @@ class Node:
             tmp_val = values[i].split(":")
             full_money += float(tmp_val[1])
         print "Full Money: " + str(full_money)
-        msg = json.dumps({'full_money': str(full_money), 'list': value})
+        has_warning = 0
+        if not self.ref_money.empty():
+            ref_value = float(self.ref_money.get())
+            self.ref_money.put(ref_value)
+            if float(full_money) >= (ref_value * 1.01) or float(full_money) <= (ref_value * 0.99):
+                    has_warning = 1
+        else:
+            self.ref_money.put(full_money)
+        msg = json.dumps({'full_money': str(full_money), 'list': value, 'warning': str(has_warning)})
         self.send_msg("127.0.0.1", 5001, "capital_status", msg)
 
     def reset_money_evaluation(self):
