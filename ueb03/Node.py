@@ -144,7 +144,7 @@ class Node:
             self.handle_locking(msg)
 
     def free_lock(self):
-        time.sleep(0.5)
+        time.sleep(0.3)
         free_ob = self.lock_queue.get()
         for i in range(sum_nodes):
             port = 6001 + i
@@ -367,6 +367,29 @@ class Node:
         self.money_req_spread.put(True)
 
     # ____________________________ END: Money Status _________________________________________________________________
+
+    # ____________________________ BEGIN: Deadlock Detection _________________________________________________________
+    def init_deadlock_detect(self):
+        deadlock_t = threading.Thread(target=self.detect_deadlock(self.sum_nodes))
+        deadlock_t.setDaemon(True)
+        deadlock_t.start()
+
+    def detect_deadlock(self, node_sum):
+        # Wait for 10 + Network-Size Seconds
+        start_time = int(time.time()) + node_sum + 10
+        while True:
+            if time.time() >= start_time:
+                break
+        # End waiting
+        has_locks = []
+        for i in range(self.lock_queue.qsize()):
+            has_locks.append(self.lock_queue.get())
+        for i in range(len(has_locks)):
+            self.lock_queue.put(has_locks[i])
+
+    def resolve_deadlock(self):
+        pass
+    # ____________________________ END: Deadlock Detection ___________________________________________________________
 
     # ____________________________ BEGIN: Election ___________________________________________________________________
     is_coordinator = False
