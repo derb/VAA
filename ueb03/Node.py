@@ -237,7 +237,10 @@ class Node:
         self.my_req.put(self.gen_request())
         time_wait = random.randint(0, 3)
         print "Wait_time: " + str(time_wait)
-        time.sleep(time_wait)
+        start_time = int(time.time()) + time_wait
+        while True:
+            if time.time() >= start_time:
+                break
         self.init_lock()
 
     def start_bank(self):
