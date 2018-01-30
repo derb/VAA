@@ -369,6 +369,10 @@ class Node:
     # ____________________________ END: Money Status _________________________________________________________________
 
     # ____________________________ BEGIN: Deadlock Detection _________________________________________________________
+    deadlock_first_heard = -1
+    deadlock_rm_heard = -1
+    deadlock_detect_list = []
+
     def init_deadlock_detect(self):
         deadlock_t = threading.Thread(target=self.detect_deadlock(self.sum_nodes))
         deadlock_t.setDaemon(True)
@@ -386,9 +390,35 @@ class Node:
             has_locks.append(self.lock_queue.get())
         for i in range(len(has_locks)):
             self.lock_queue.put(has_locks[i])
+        for i in range(len(has_locks)):
+            self.deadlock_detect_list.append(has_locks[i])
+        self.send_to_neighbours("f_dlock", str(has_locks))
 
-    def resolve_deadlock(self):
-        pass
+    def receive_deadlock_detection(self, lock_list, sid):
+        if self.deadlock_first_heard == -1:
+            self.deadlock_first_heard = sid
+            for i in range(len(lock_list)):
+                self.deadlock_detect_list.append(lock_list[i])
+            if self.my_req in self.deadlock_detect_list:
+                print "deadlock detected"
+            self.send_to_neighbours("rm_dlock", str(self.my_req))
+
+    def resolve_deadlock(self, dl_req, sid):
+        tmp_list = []
+        if self.deadlock_rm_heard == -1:
+            self.deadlock_rm_heard = sid
+            for i in range(len(self.neighborNodes)):
+                node = self.neighborNodes[i]
+                if not node[0] == self.deadlock_rm_heard:
+                    self.send_msg(node[1], node[2], "rm_dlock", str(dl_req))
+            for i in range(self.lock_queue.qsize()):
+                rq = self.lock_queue.get()
+                if not rq == dl_req:
+                    tmp_list.append(rq)
+            for i in range(len(tmp_list)):
+                self.lock_queue.put(tmp_list[i])
+            # restart without lock
+            self.free_lock()
     # ____________________________ END: Deadlock Detection ___________________________________________________________
 
     # ____________________________ BEGIN: Election ___________________________________________________________________
@@ -682,6 +712,10 @@ class Node:
             self.echo_money_status(str(json_msg["payload"]))
         elif command == "rme":
             self.reset_money_evaluation()
+        elif command == "f_dlock":
+            self.receive_deadlock_detection(json_msg["payload"], json_msg["sID"])
+        elif command == "rm_dlock":
+            self.resolve_deadlock(json_msg["payload"], json_msg["sID"])
 
         # Other-Msg
         elif command == "msg":
