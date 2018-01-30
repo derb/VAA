@@ -144,7 +144,7 @@ class Node:
             self.handle_locking(msg)
 
     def free_lock(self):
-        time.sleep(0.3)
+        time.sleep(0.4)
         free_ob = self.lock_queue.get()
         for i in range(sum_nodes):
             port = 6001 + i
@@ -358,7 +358,7 @@ class Node:
             money_reval.start()
 
     def re_init_money_stat(self, node_list):
-        ref_time = int(time.time()) + 10
+        ref_time = int(time.time()) + 20
         while True:
             if time.time() > ref_time:
                 break
